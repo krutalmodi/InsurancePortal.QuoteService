@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="InsurancePortal.QuoteService.API/InsurancePortal.QuoteService.API.csproj" />
+  <Project Path="InsurancePortal.QuoteService.Application/InsurancePortal.QuoteService.Application.csproj" />
+  <Project Path="InsurancePortal.QuoteService.Domain/InsurancePortal.QuoteService.Domain.csproj" />
+  <Project Path="InsurancePortal.QuoteService.Infrastructure/InsurancePortal.QuoteService.Infrastructure.csproj" />
+</Solution>
