@@ -5,6 +5,11 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Requests
     /// </summary>
     public class CreateHealthQuoteRequest
     {
+        /// <summary>
+        /// Address of the applicant; a Location is created on the fly for the quote
+        /// </summary>
+        public LocationRequest Location { get; set; }
+
         public int Age { get; set; }
         public string HealthStatus { get; set; }
         public bool HasPreexistingConditions { get; set; }

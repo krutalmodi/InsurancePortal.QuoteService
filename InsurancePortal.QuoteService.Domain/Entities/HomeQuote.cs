@@ -5,6 +5,8 @@ namespace InsurancePortal.QuoteService.Domain.Entities
 {
     /// <summary>
     /// Home Insurance Quote - inherits from ProductQuote
+    /// Stores home-specific underwriting/application inputs
+    /// Offer details (premium, status, provider) are in ProductQuote base class
     /// </summary>
     public class HomeQuote : ProductQuote
     {
@@ -21,6 +23,28 @@ namespace InsurancePortal.QuoteService.Domain.Entities
             Discriminator = nameof(HomeQuote);
         }
 
+        /// <summary>
+        /// FK to Location (address of the property)
+        /// </summary>
+        public Guid? LocationId { get; set; }
+
+        public string? UnitNumber { get; set; }
+
+        public string? StreetAddress1 { get; set; }
+
+        public string? StreetAddress2 { get; set; }
+
+        public string? City { get; set; }
+
+        public string? PostalCode { get; set; }
+
+        public int? ProvinceId { get; set; }
+
+        public int? CountryId { get; set; }
+
+        /// <summary>
+        /// Home-specific application details as owned value object
+        /// </summary>
         public HomeQuoteDetails? Details { get; set; }
 
         public override ProductType ProductType => ProductType.Home;

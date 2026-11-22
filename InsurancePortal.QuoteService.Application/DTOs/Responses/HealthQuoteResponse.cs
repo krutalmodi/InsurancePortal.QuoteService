@@ -6,6 +6,7 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Responses
     public class HealthQuoteResponse
     {
         public Guid Id { get; set; }
+        public LocationResponse? Location { get; set; }
         public int Age { get; set; }
         public string HealthStatus { get; set; }
         public bool HasPreexistingConditions { get; set; }

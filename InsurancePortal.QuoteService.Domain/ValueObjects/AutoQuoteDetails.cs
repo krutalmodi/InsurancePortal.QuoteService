@@ -6,38 +6,38 @@ namespace InsurancePortal.QuoteService.Domain.ValueObjects
     public class AutoQuoteDetails
     {
         public AutoQuoteDetails(
-            string vin,
-            string make,
-            string model,
-            int year,
-            string color,
-            int mileage,
-            string drivingRecord,
-            int numberOfDrivers,
-            decimal estimatedAnnualMileage)
+            string VIN,
+            string Make,
+            string Model,
+            int Year,
+            string Color,
+            int Mileage,
+            string DrivingRecord,
+            int NumberOfDrivers,
+            decimal EstimatedAnnualMileage)
         {
-            if (string.IsNullOrWhiteSpace(vin))
+            if (string.IsNullOrWhiteSpace(VIN))
                 throw new ArgumentException("VIN cannot be empty");
-            if (string.IsNullOrWhiteSpace(make))
+            if (string.IsNullOrWhiteSpace(Make))
                 throw new ArgumentException("Make cannot be empty");
-            if (year < 1900)
+            if (Year < 1900)
                 throw new ArgumentException("Year must be 1900 or later");
-            if (mileage < 0)
+            if (Mileage < 0)
                 throw new ArgumentException("Mileage cannot be negative");
-            if (numberOfDrivers <= 0)
+            if (NumberOfDrivers <= 0)
                 throw new ArgumentException("Number of drivers must be greater than 0");
-            if (estimatedAnnualMileage <= 0)
+            if (EstimatedAnnualMileage <= 0)
                 throw new ArgumentException("Estimated annual mileage must be greater than 0");
 
-            VIN = vin;
-            Make = make;
-            Model = model;
-            Year = year;
-            Color = color;
-            Mileage = mileage;
-            DrivingRecord = drivingRecord;
-            NumberOfDrivers = numberOfDrivers;
-            EstimatedAnnualMileage = estimatedAnnualMileage;
+            this.VIN = VIN;
+            this.Make = Make;
+            this.Model = Model;
+            this.Year = Year;
+            this.Color = Color;
+            this.Mileage = Mileage;
+            this.DrivingRecord = DrivingRecord;
+            this.NumberOfDrivers = NumberOfDrivers;
+            this.EstimatedAnnualMileage = EstimatedAnnualMileage;
         }
 
         public string VIN { get; }

@@ -21,6 +21,25 @@ namespace InsurancePortal.QuoteService.Domain.Entities
             Discriminator = nameof(AutoQuote);
         }
 
+        /// <summary>
+        /// FK to Location (address associated with the vehicle quote)
+        /// </summary>
+        public Guid? LocationId { get; set; }
+
+        public string? UnitNumber { get; set; }
+
+        public string? StreetAddress1 { get; set; }
+
+        public string? StreetAddress2 { get; set; }
+
+        public string? City { get; set; }
+
+        public string? PostalCode { get; set; }
+
+        public int? ProvinceId { get; set; }
+
+        public int? CountryId { get; set; }
+
         public AutoQuoteDetails? Details { get; set; }
 
         public override ProductType ProductType => ProductType.Auto;

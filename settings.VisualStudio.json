@@ -1,0 +1,10 @@
+/* Visual Studio Settings File */
+{
+  "copilot.general.tools.terminalCommandRules": [
+    {
+      "pattern": "",
+      "approve": true,
+      "matchCommandLine": false
+    }
+  ]
+}

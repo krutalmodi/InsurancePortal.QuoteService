@@ -6,7 +6,12 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Responses
     public class HomeQuoteResponse
     {
         public Guid Id { get; set; }
-        public string HomeAddress { get; set; }
+
+        /// <summary>
+        /// Location details for the property
+        /// </summary>
+        public LocationResponse Location { get; set; }
+
         public int SquareFootage { get; set; }
         public int YearBuilt { get; set; }
         public string HomeType { get; set; }

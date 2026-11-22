@@ -5,7 +5,12 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Requests
     /// </summary>
     public class CreateHomeQuoteRequest
     {
-        public string HomeAddress { get; set; }
+        /// <summary>
+        /// Location details for the property being quoted
+        /// Contains full address information including street, city, postal code, province, and country
+        /// </summary>
+        public LocationRequest Location { get; set; }
+
         public int SquareFootage { get; set; }
         public int YearBuilt { get; set; }
         public string HomeType { get; set; }

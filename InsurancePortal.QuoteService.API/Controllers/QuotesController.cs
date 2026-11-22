@@ -1,17 +1,22 @@
-using Microsoft.AspNetCore.Mvc;
 using InsurancePortal.QuoteService.Application.DTOs.Requests;
 using InsurancePortal.QuoteService.Application.DTOs.Responses;
 using InsurancePortal.QuoteService.Application.Services;
 using InsurancePortal.QuoteService.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace InsurancePortal.QuoteService.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Authorize]
+    [Route("api/quotes")]
     public class QuotesController : ControllerBase
     {
         private readonly IQuoteService _quoteService;
         private readonly ILogger<QuotesController> _logger;
+
+        private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         public QuotesController(IQuoteService quoteService, ILogger<QuotesController> logger)
         {
@@ -20,27 +25,29 @@ namespace InsurancePortal.QuoteService.API.Controllers
         }
 
         /// <summary>
-        /// Create a new quote with product-specific details
-        /// Supports bundled quotes (Home + Auto, etc.)
+        /// Create a new quote with a single product type
+        /// Users do not need to be registered; each request is treated as a guest quote with a generated user ID and reference number
         /// </summary>
-        /// <param name="userId">User ID making the quote request</param>
-        /// <param name="request">Quote request with product details</param>
+        /// <param name="request">Quote request with single product details and ProductType</param>
         /// <returns>Created quote with premium calculation</returns>
         [HttpPost]
-        public async Task<ActionResult<QuoteResponse>> CreateQuote([FromQuery] Guid userId, [FromBody] CreateQuoteRequest request)
+        public async Task<ActionResult<QuoteResponse>> CreateQuote([FromBody] CreateQuoteRequest request)
         {
             try
             {
-                if (userId == Guid.Empty)
-                    return BadRequest("User ID is required");
-
                 if (request == null)
                     return BadRequest("Quote request cannot be empty");
 
-                var quote = await _quoteService.CreateQuoteAsync(userId, request);
-                var response = MapToResponse(quote);
+                var guestUserId = CurrentUserId != null ? Guid.Parse(CurrentUserId) : Guid.NewGuid();
+                var quote = await _quoteService.CreateQuoteAsync(guestUserId, request, GetBearerToken());
+                var response = await MapToResponseAsync(quote);
 
-                return CreatedAtAction(nameof(GetQuote), new { id = quote.Id }, response);
+                return CreatedAtAction(nameof(GetQuote), new { id = quote.Id }, new
+                {
+                    message = "Quote created successfully",
+                    referenceNumber = quote.ReferenceNumber,
+                    quote = response
+                });
             }
             catch (ArgumentNullException ex)
             {
@@ -82,7 +89,8 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 if (quote == null)
                     return NotFound("Quote not found");
 
-                return Ok(MapToResponse(quote));
+                var response = await MapToResponseAsync(quote);
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -105,7 +113,13 @@ namespace InsurancePortal.QuoteService.API.Controllers
                     return BadRequest("User ID is required");
 
                 var quotes = await _quoteService.GetUserQuotesAsync(userId);
-                var responses = quotes.Select(MapToResponse).ToList();
+                var responses = new List<QuoteResponse>();
+
+                foreach (var quote in quotes)
+                {
+                    var response = await MapToResponseAsync(quote);
+                    responses.Add(response);
+                }
 
                 return Ok(responses);
             }
@@ -134,7 +148,8 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 if (quote == null)
                     return NotFound("Quote not found");
 
-                return Ok(MapToResponse(quote));
+                var response = await MapToResponseAsync(quote);
+                return Ok(response);
             }
             catch (InvalidOperationException ex)
             {
@@ -166,7 +181,8 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 if (quote == null)
                     return NotFound("Quote not found");
 
-                return Ok(MapToResponse(quote));
+                var response = await MapToResponseAsync(quote);
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -185,7 +201,13 @@ namespace InsurancePortal.QuoteService.API.Controllers
             try
             {
                 var quotes = await _quoteService.GetExpiredQuotesAsync();
-                var responses = quotes.Select(MapToResponse).ToList();
+                var responses = new List<QuoteResponse>();
+
+                foreach (var quote in quotes)
+                {
+                    var response = await MapToResponseAsync(quote);
+                    responses.Add(response);
+                }
 
                 return Ok(responses);
             }
@@ -217,7 +239,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
         /// <summary>
         /// Map Quote domain entity to QuoteResponse DTO
         /// </summary>
-        private QuoteResponse MapToResponse(Quote quote)
+        private async Task<QuoteResponse> MapToResponseAsync(Quote quote)
         {
             var response = new QuoteResponse
             {
@@ -236,26 +258,31 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 switch (productQuote)
                 {
                     case HomeQuote homeQuote:
-                        response.HomeQuote = new HomeQuoteResponse
                         {
-                            Id = homeQuote.Id,
-                            HomeAddress = homeQuote.Details?.HomeAddress,
-                            SquareFootage = homeQuote.Details?.SquareFootage ?? 0,
-                            YearBuilt = homeQuote.Details?.YearBuilt ?? 0,
-                            HomeType = homeQuote.Details?.HomeType,
-                            HomeValue = homeQuote.Details?.HomeValue ?? 0,
-                            HasSecuritySystem = homeQuote.Details?.HasSecuritySystem ?? false,
-                            HasFireAlarm = homeQuote.Details?.HasFireAlarm ?? false,
-                            NumberOfOccupants = homeQuote.Details?.NumberOfOccupants ?? 0,
-                            QuotedPremium = homeQuote.QuotedPremium,
-                            ValidUntil = homeQuote.ValidUntil
-                        };
-                        break;
+                            LocationResponse? locationResponse = MapLocation(homeQuote.LocationId, homeQuote.UnitNumber, homeQuote.StreetAddress1, homeQuote.StreetAddress2, homeQuote.City, homeQuote.PostalCode, homeQuote.ProvinceId, homeQuote.CountryId);
+
+                            response.HomeQuote = new HomeQuoteResponse
+                            {
+                                Id = homeQuote.Id,
+                                Location = locationResponse,
+                                SquareFootage = homeQuote.Details?.SquareFootage ?? 0,
+                                YearBuilt = homeQuote.Details?.YearBuilt ?? 0,
+                                HomeType = homeQuote.Details?.HomeType,
+                                HomeValue = homeQuote.Details?.HomeValue ?? 0,
+                                HasSecuritySystem = homeQuote.Details?.HasSecuritySystem ?? false,
+                                HasFireAlarm = homeQuote.Details?.HasFireAlarm ?? false,
+                                NumberOfOccupants = homeQuote.Details?.NumberOfOccupants ?? 0,
+                                QuotedPremium = homeQuote.QuotedPremium,
+                                ValidUntil = homeQuote.ValidUntil
+                            };
+                            break;
+                        }
 
                     case AutoQuote autoQuote:
                         response.AutoQuote = new AutoQuoteResponse
                         {
                             Id = autoQuote.Id,
+                            Location = MapLocation(autoQuote.LocationId, autoQuote.UnitNumber, autoQuote.StreetAddress1, autoQuote.StreetAddress2, autoQuote.City, autoQuote.PostalCode, autoQuote.ProvinceId, autoQuote.CountryId),
                             VIN = autoQuote.Details?.VIN,
                             Make = autoQuote.Details?.Make,
                             Model = autoQuote.Details?.Model,
@@ -274,6 +301,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                         response.HealthQuote = new HealthQuoteResponse
                         {
                             Id = healthQuote.Id,
+                            Location = MapLocation(healthQuote.LocationId, healthQuote.UnitNumber, healthQuote.StreetAddress1, healthQuote.StreetAddress2, healthQuote.City, healthQuote.PostalCode, healthQuote.ProvinceId, healthQuote.CountryId),
                             Age = healthQuote.Details?.Age ?? 0,
                             HealthStatus = healthQuote.Details?.HealthStatus,
                             HasPreexistingConditions = healthQuote.Details?.HasPreexistingConditions ?? false,
@@ -288,6 +316,33 @@ namespace InsurancePortal.QuoteService.API.Controllers
             }
 
             return response;
+        }
+
+        /// <summary>
+        /// Map a Location from the product's stored address snapshot to LocationResponse
+        /// </summary>
+        private static LocationResponse? MapLocation(Guid? locationId, string? unitNumber, string? streetAddress1, string? streetAddress2, string? city, string? postalCode, int? provinceId, int? countryId)
+        {
+            if (!locationId.HasValue)
+                return null;
+
+            return new LocationResponse
+            {
+                Id = locationId.Value,
+                UnitNumber = unitNumber,
+                StreetAddress1 = streetAddress1 ?? string.Empty,
+                StreetAddress2 = streetAddress2,
+                City = city ?? string.Empty,
+                PostalCode = postalCode ?? string.Empty,
+                ProvinceId = provinceId ?? 0,
+                CountryId = countryId ?? 0
+            };
+        }
+
+        private string GetBearerToken()
+        {
+            var header = Request.Headers.Authorization.ToString();
+            return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header["Bearer ".Length..] : string.Empty;
         }
     }
 }

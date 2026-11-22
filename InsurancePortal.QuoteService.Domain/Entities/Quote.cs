@@ -13,6 +13,7 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         {
             ProductQuotes = new List<ProductQuote>();
             CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
             Status = QuoteStatus.Active;
             ValidUntil = DateTime.UtcNow.AddDays(30); // Quote valid for 30 days
         }
@@ -22,13 +23,66 @@ namespace InsurancePortal.QuoteService.Domain.Entities
             UserId = userId;
         }
 
-        public Guid Id { get; set; } = Guid.NewGuid();
+        /// <summary>
+        /// Primary key
+        /// </summary>
+        public Guid Id { get; set; }
+
+        /// <summary>
+        /// FK to user in IdentityMgmtDb
+        /// </summary>
         public Guid UserId { get; set; }
-        public QuoteStatus Status { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime ValidUntil { get; set; }
-        public decimal TotalPremium { get; set; }
+
+        /// <summary>
+        /// Unique public reference identifier
+        /// Format: QT-YYYYMMDD-XXXXX
+        /// </summary>
         public string? ReferenceNumber { get; set; }
+
+        /// <summary>
+        /// FK to QuoteStatusLookup
+        /// Represents overall quote lifecycle status
+        /// </summary>
+        public int StatusId { get; set; }
+
+        /// <summary>
+        /// Deprecated: Use StatusId instead
+        /// Kept for backward compatibility
+        /// </summary>
+        [Obsolete("Use StatusId with QuoteStatusLookup instead")]
+        public QuoteStatus Status { get; set; }
+
+        /// <summary>
+        /// When quote expires (default 30 days from creation)
+        /// </summary>
+        public DateTime ValidUntil { get; set; }
+
+        /// <summary>
+        /// Sum of all ProductQuote premiums in primary currency
+        /// This is a snapshot, not independently sourced
+        /// </summary>
+        public decimal TotalPremium { get; set; }
+
+        /// <summary>
+        /// Audit: When created
+        /// </summary>
+        public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// Audit: Who/what created this record
+        /// Typically system or agent identifier
+        /// </summary>
+        public string? CreatedBy { get; set; }
+
+        /// <summary>
+        /// Audit: When last updated
+        /// </summary>
+        public DateTime UpdatedAt { get; set; }
+
+        /// <summary>
+        /// Audit: Who/what last updated this record
+        /// </summary>
+        public string? UpdatedBy { get; set; }
 
         // Navigation collection for product quotes
         public virtual ICollection<ProductQuote> ProductQuotes { get; set; }

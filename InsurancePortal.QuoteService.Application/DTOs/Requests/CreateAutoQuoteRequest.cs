@@ -5,6 +5,11 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Requests
     /// </summary>
     public class CreateAutoQuoteRequest
     {
+        /// <summary>
+        /// Address of the vehicle's primary location; a Location is created on the fly for the quote
+        /// </summary>
+        public LocationRequest Location { get; set; }
+
         public string VIN { get; set; }
         public string Make { get; set; }
         public string Model { get; set; }

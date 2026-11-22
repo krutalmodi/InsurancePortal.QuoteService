@@ -359,6 +359,13 @@ All endpoints require JWT token in Authorization header:
 Authorization: Bearer <jwt_token>
 ```
 
+**Implementation:** JWT Bearer authentication (`Microsoft.AspNetCore.Authentication.JwtBearer`) is registered in `Program.cs` and validates tokens issued by the Identity Service:
+- **Issuer**: `InsurancePortal.IdentityService.Api` (`Jwt:Issuer`)
+- **Audience**: `InsurancePortal.QuoteService.Api` (`Jwt:Audience`)
+- **Signing key**: Symmetric key from `Jwt:Secret` (HMAC-SHA256)
+- **Validation**: Issuer, audience, signing key, and lifetime are validated; clock skew is zero
+- **Pipeline**: `UseAuthentication()` runs before `UseAuthorization()`; `QuotesController` is protected with `[Authorize]`
+
 ### Endpoints
 
 #### 1. Create Quote (POST /api/quotes)
@@ -644,67 +651,89 @@ POST /api/quotes/expire-old
 ```
 InsurancePortal.QuoteService/
 │
+├── InsurancePortal.QuoteService.API/
+│   ├── Controllers/
+│   │   └── QuotesController.cs         ([Authorize] REST endpoints under api/quotes)
+│   ├── Properties/
+│   │   └── launchSettings.json
+│   ├── appsettings.json                (Configuration, Jwt settings)
+│   ├── appsettings.Development.json
+│   ├── InsurancePortal.QuoteService.API.http
+│   └── Program.cs                      (DI, JWT authentication, Swagger, CORS, migrations)
+│
+├── InsurancePortal.QuoteService.Application/
+│   ├── Clients/
+│   │   └── ILocationClient.cs          (LocationService client abstraction)
+│   ├── DTOs/
+│   │   ├── QuoteDtos.cs
+│   │   ├── Requests/
+│   │   │   ├── CreateQuoteRequest.cs
+│   │   │   ├── CreateHomeQuoteRequest.cs
+│   │   │   ├── CreateAutoQuoteRequest.cs
+│   │   │   ├── CreateHealthQuoteRequest.cs
+│   │   │   └── LocationRequest.cs
+│   │   └── Responses/
+│   │       ├── QuoteResponse.cs
+│   │       ├── HomeQuoteResponse.cs
+│   │       ├── AutoQuoteResponse.cs
+│   │       ├── HealthQuoteResponse.cs
+│   │       └── LocationResponse.cs
+│   ├── EventPublishing/
+│   │   └── IEventPublisher.cs          (Event publishing abstraction)
+│   ├── Repositories/
+│   │   └── IQuoteRepository.cs         (Interface)
+│   ├── Services/
+│   │   ├── IQuoteService.cs            (Interface)
+│   │   ├── QuoteService.cs             (Implementation, registered in DI)
+│   │   └── QuoteServiceWithEvents.cs   (Implementation with event publishing, not registered)
+│   └── Class1.cs                       (Placeholder)
+│
 ├── InsurancePortal.QuoteService.Domain/
 │   ├── Entities/
 │   │   ├── Quote.cs                    (Aggregate root)
 │   │   ├── ProductQuote.cs             (Abstract base)
 │   │   ├── HomeQuote.cs                (Inheritance)
 │   │   ├── AutoQuote.cs                (Inheritance)
-│   │   └── HealthQuote.cs              (Inheritance)
+│   │   ├── HealthQuote.cs              (Inheritance)
+│   │   └── Lookups/                    (Lookup entities, int IDs)
+│   ├── Enums/                          (Lookup and product enums)
+│   ├── Events/
+│   │   ├── DomainEvent.cs
+│   │   ├── QuoteCreatedEvent.cs
+│   │   ├── QuoteAcceptedEvent.cs
+│   │   └── QuoteExpiredEvent.cs
+│   ├── Utilities/
+│   │   └── LookupEnumExtensions.cs
 │   ├── ValueObjects/
 │   │   ├── HomeQuoteDetails.cs
 │   │   ├── AutoQuoteDetails.cs
 │   │   └── HealthQuoteDetails.cs
-│   ├── Enums/
-│   │   ├── QuoteStatus.cs
-│   │   └── ProductType.cs
 │   └── Class1.cs                       (Placeholder)
 │
-├── InsurancePortal.QuoteService.Application/
-│   ├── DTOs/
-│   │   ├── Requests/
-│   │   │   ├── CreateQuoteRequest.cs
-│   │   │   ├── CreateHomeQuoteRequest.cs
-│   │   │   ├── CreateAutoQuoteRequest.cs
-│   │   │   └── CreateHealthQuoteRequest.cs
-│   │   └── Responses/
-│   │       ├── QuoteResponse.cs
-│   │       ├── HomeQuoteResponse.cs
-│   │       ├── AutoQuoteResponse.cs
-│   │       └── HealthQuoteResponse.cs
-│   ├── Services/
-│   │   ├── IQuoteService.cs            (Interface)
-│   │   └── QuoteService.cs             (Implementation)
-│   ├── Repositories/
-│   │   └── IQuoteRepository.cs         (Interface)
-│   └── Class1.cs                       (Placeholder)
-│
-├── InsurancePortal.QuoteService.Infrastructure/
-│   ├── Data/
-│   │   ├── QuoteDbContext.cs           (EF DbContext)
-│   │   ├── Configurations/
-│   │   │   ├── QuoteConfiguration.cs
-│   │   │   ├── ProductQuoteConfiguration.cs
-│   │   │   ├── HomeQuoteConfiguration.cs
-│   │   │   ├── AutoQuoteConfiguration.cs
-│   │   │   └── HealthQuoteConfiguration.cs
-│   │   └── Migrations/
-│   │       └── [EF Migrations]
-│   ├── Repositories/
-│   │   └── QuoteRepository.cs          (Implementation)
-│   ├── QUOTE_SERVICE_ARCHITECTURE.md   (This file)
-│   └── Class1.cs                       (Placeholder)
-│
-├── InsurancePortal.QuoteService.API/
-│   ├── Controllers/
-│   │   └── QuotesController.cs         (REST endpoints)
-│   ├── Properties/
-│   │   └── launchSettings.json
-│   ├── appsettings.json                (Configuration)
-│   ├── Program.cs                      (DI & configuration)
-│   └── WeatherForecast.cs              (Placeholder)
-│
-└── InsurancePortal.QuoteService.sln
+└── InsurancePortal.QuoteService.Infrastructure/
+    ├── Clients/
+    │   └── LocationClient.cs           (HTTP client for LocationService)
+    ├── Data/
+    │   ├── QuoteDbContext.cs           (EF DbContext)
+    │   ├── QuoteDbContextFactory.cs
+    │   ├── Configurations/
+    │   │   ├── QuoteConfiguration.cs
+    │   │   ├── ProductQuoteConfiguration.cs
+    │   │   ├── HomeQuoteConfiguration.cs
+    │   │   ├── AutoQuoteConfiguration.cs
+    │   │   ├── HealthQuoteConfiguration.cs
+    │   │   └── Lookups/                (Lookup table configurations)
+    │   └── Seed/
+    │       └── SeedData.cs
+    ├── EventPublishing/
+    │   └── ServiceBusEventPublisher.cs (Azure Service Bus publisher)
+    ├── Migrations/
+    │   ├── 20261120213958_InitialQuotes.cs
+    │   ├── 20261120213958_InitialQuotes.Designer.cs
+    │   └── QuoteDbContextModelSnapshot.cs
+    ├── Repositories/
+    │   └── QuoteRepository.cs          (Implementation)
+    └── QuoteService.md                 (This file)
 ```
 
 ---
@@ -792,13 +821,13 @@ Subscribers:
 - Application service layer
 - REST API controller with all endpoints
 - Dependency injection setup
+- JWT Bearer authentication (tokens issued by IdentityService)
 - Build compilation successful
 
 ⏳ **In Progress:**
-- Database migrations (working around EF Core value object serialization)
+- ServiceBusEventPublisher implemented (not yet registered in DI)
 
 📋 **Planned:**
-- Database migrations creation
 - Event publishing to Azure Service Bus
 - Unit tests for domain and service layer
 - Integration tests for API endpoints
@@ -807,7 +836,6 @@ Subscribers:
 - Logging and monitoring
 - API versioning
 - Rate limiting
-- Authentication/Authorization integration with User Service
 
 ### Key Implementation Decisions
 
@@ -896,9 +924,10 @@ Subscribers:
   "ServiceBus": {
 	"ConnectionString": "[Azure Service Bus Connection String]"
   },
-  "Authentication": {
-	"Authority": "[Identity Provider URL]",
-	"Audience": "quote-service-api"
+  "Jwt": {
+	"Secret": "[Shared HMAC signing key, min. 32 characters]",
+	"Issuer": "InsurancePortal.IdentityService.Api",
+	"Audience": "InsurancePortal.QuoteService.Api"
   }
 }
 ```
