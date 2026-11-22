@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using InsurancePortal.QuoteService.Domain.Entities;
+using InsurancePortal.QuoteService.Domain.Entities.Lookups;
 
 namespace InsurancePortal.QuoteService.Infrastructure.Data.Configurations
 {
@@ -25,23 +26,21 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data.Configurations
                     .HasMaxLength(20)
                     .IsRequired();
 
-                od.Property(d => d.Make)
-                    .HasColumnName("Make")
-                    .HasMaxLength(100)
+                od.Property(d => d.VehicleMakeId)
+                    .HasColumnName("VehicleMakeId")
                     .IsRequired();
 
-                od.Property(d => d.Model)
-                    .HasColumnName("Model")
-                    .HasMaxLength(100)
+                od.Property(d => d.VehicleModelId)
+                    .HasColumnName("VehicleModelId")
                     .IsRequired();
 
                 od.Property(d => d.Year)
                     .HasColumnName("Year")
                     .IsRequired();
 
-                od.Property(d => d.Color)
-                    .HasColumnName("Color")
-                    .HasMaxLength(50);
+                od.Property(d => d.VehicleColorId)
+                    .HasColumnName("VehicleColorId")
+                    .IsRequired();
 
                 od.Property(d => d.Mileage)
                     .HasColumnName("Mileage")
@@ -59,6 +58,21 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data.Configurations
                     .HasColumnName("EstimatedAnnualMileage")
                     .HasColumnType("decimal(12,2)")
                     .IsRequired();
+
+                od.HasOne<VehicleMakeLookup>()
+                    .WithMany()
+                    .HasForeignKey(d => d.VehicleMakeId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                od.HasOne<VehicleModelLookup>()
+                    .WithMany()
+                    .HasForeignKey(d => d.VehicleModelId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                od.HasOne<VehicleColorLookup>()
+                    .WithMany()
+                    .HasForeignKey(d => d.VehicleColorId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
             }
     }

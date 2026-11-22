@@ -2,10 +2,14 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using InsurancePortal.QuoteService.Application.Abstractions.Cqrs;
 using InsurancePortal.QuoteService.Application.Clients;
-using InsurancePortal.QuoteService.Application.Services;
+using InsurancePortal.QuoteService.Application.Quotes.Commands;
+using InsurancePortal.QuoteService.Domain.Entities;
+using InsurancePortal.QuoteService.Application.Quotes.Queries;
 using InsurancePortal.QuoteService.Application.Repositories;
 using InsurancePortal.QuoteService.Infrastructure.Clients;
+using InsurancePortal.QuoteService.Infrastructure.Cqrs;
 using InsurancePortal.QuoteService.Infrastructure.Data;
 using InsurancePortal.QuoteService.Infrastructure.Repositories;
 
@@ -53,8 +57,17 @@ builder.Services.AddDbContext<QuoteDbContext>(options =>
 
 #region Dependency Injection
 
-// Register application services
-builder.Services.AddScoped<IQuoteService, QuoteService>();
+// Register CQRS dispatcher and handlers
+builder.Services.AddScoped<IDispatcher, Dispatcher>();
+builder.Services.AddScoped<ICommandHandler<CreateQuoteCommand, Quote>, CreateQuoteCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<AcceptQuoteCommand, Quote?>, AcceptQuoteCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<CancelQuoteCommand, Quote?>, CancelQuoteCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<ExpireOldQuotesCommand, Unit>, ExpireOldQuotesCommandHandler>();
+builder.Services.AddScoped<IQueryHandler<GetQuoteByIdQuery, Quote?>, GetQuoteByIdQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetUserQuotesQuery, IEnumerable<Quote>>, GetUserQuotesQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetExpiredQuotesQuery, IEnumerable<Quote>>, GetExpiredQuotesQueryHandler>();
+
+// Register repositories and clients
 builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
 builder.Services.AddHttpClient<ILocationClient, LocationClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["LocationService:BaseUrl"] ?? throw new InvalidOperationException("LocationService:BaseUrl is not configured")));

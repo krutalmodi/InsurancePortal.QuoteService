@@ -1994,12 +1994,6 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             b1.Property<Guid>("AutoQuoteId")
                                 .HasColumnType("uniqueidentifier");
 
-                            b1.Property<string>("Color")
-                                .IsRequired()
-                                .HasMaxLength(50)
-                                .HasColumnType("nvarchar(50)")
-                                .HasColumnName("Color");
-
                             b1.Property<string>("DrivingRecord")
                                 .IsRequired()
                                 .HasMaxLength(100)
@@ -2010,21 +2004,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                                 .HasColumnType("decimal(12,2)")
                                 .HasColumnName("EstimatedAnnualMileage");
 
-                            b1.Property<string>("Make")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Make");
-
                             b1.Property<int>("Mileage")
                                 .HasColumnType("int")
                                 .HasColumnName("Mileage");
-
-                            b1.Property<string>("Model")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Model");
 
                             b1.Property<int>("NumberOfDrivers")
                                 .HasColumnType("int")
@@ -2036,16 +2018,52 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                                 .HasColumnType("nvarchar(20)")
                                 .HasColumnName("VIN");
 
+                            b1.Property<int>("VehicleColorId")
+                                .HasColumnType("int")
+                                .HasColumnName("VehicleColorId");
+
+                            b1.Property<int>("VehicleMakeId")
+                                .HasColumnType("int")
+                                .HasColumnName("VehicleMakeId");
+
+                            b1.Property<int>("VehicleModelId")
+                                .HasColumnType("int")
+                                .HasColumnName("VehicleModelId");
+
                             b1.Property<int>("Year")
                                 .HasColumnType("int")
                                 .HasColumnName("Year");
 
                             b1.HasKey("AutoQuoteId");
 
+                            b1.HasIndex("VehicleColorId");
+
+                            b1.HasIndex("VehicleMakeId");
+
+                            b1.HasIndex("VehicleModelId");
+
                             b1.ToTable("AutoQuotes");
 
                             b1.WithOwner()
                                 .HasForeignKey("AutoQuoteId");
+
+                            b1.HasOne("InsurancePortal.QuoteService.Domain.Entities.Lookups.VehicleColorLookup", null)
+                                .WithMany()
+                                .HasForeignKey("VehicleColorId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+
+                            b1.HasOne("InsurancePortal.QuoteService.Domain.Entities.Lookups.VehicleMakeLookup", null)
+                                .WithMany()
+                                .HasForeignKey("VehicleMakeId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+
+                            b1.HasOne("InsurancePortal.QuoteService.Domain.Entities.Lookups.VehicleModelLookup", null)
+                                .WithMany()
+                                .HasForeignKey("VehicleModelId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
                         });
 
                     b.Navigation("Details");

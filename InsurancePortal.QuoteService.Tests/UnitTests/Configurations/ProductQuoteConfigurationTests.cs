@@ -52,7 +52,7 @@ namespace InsurancePortal.QuoteService.Tests.UnitTests.Configurations
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = "system",
                     Details = new Domain.ValueObjects.AutoQuoteDetails(
-                        "VIN123456789", "Toyota", "Camry", 2020, "Silver",
+                        "VIN123456789", 1, 1, 2020, 3,
                         50000, "Clean", 1, 12000m)
                 };
 
@@ -102,7 +102,7 @@ namespace InsurancePortal.QuoteService.Tests.UnitTests.Configurations
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = "system",
                     Details = new Domain.ValueObjects.AutoQuoteDetails(
-                        "VIN987654321", "Honda", "Civic", 2022, "Black",
+                        "VIN987654321", 1, 1, 2022, 1,
                         25000, "Clean", 1, 15000m)
                 };
 
@@ -149,7 +149,7 @@ namespace InsurancePortal.QuoteService.Tests.UnitTests.Configurations
                     UpdatedAt = now,
                     UpdatedBy = null,
                     Details = new Domain.ValueObjects.AutoQuoteDetails(
-                        "VIN111111111", "Ford", "Mustang", 2023, "Red",
+                        "VIN111111111", 1, 1, 2023, 5,
                         5000, "Clean", 2, 20000m)
                 };
 
@@ -195,7 +195,7 @@ namespace InsurancePortal.QuoteService.Tests.UnitTests.Configurations
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = "system",
                     Details = new Domain.ValueObjects.AutoQuoteDetails(
-                        "VIN222222222", "BMW", "X5", 2021, "White",
+                        "VIN222222222", 1, 1, 2021, 2,
                         30000, "Minor Violation", 1, 10000m)
                 };
 

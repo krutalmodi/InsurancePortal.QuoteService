@@ -230,7 +230,7 @@ namespace InsurancePortal.QuoteService.Tests.IntegrationTests.Migrations
                         CreatedAt = DateTime.UtcNow,
                         CreatedBy = "system",
                         Details = new Domain.ValueObjects.AutoQuoteDetails(
-                            "VIN123", "Toyota", "Camry", 2020, "Silver", 50000, "Clean", 1, 12000m)
+                            "VIN123", 1, 1, 2020, 3, 50000, "Clean", 1, 12000m)
                     };
 
                     context.Quotes.Add(quote);

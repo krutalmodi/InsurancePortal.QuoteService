@@ -7,10 +7,10 @@ namespace InsurancePortal.QuoteService.Domain.ValueObjects
     {
         public AutoQuoteDetails(
             string VIN,
-            string Make,
-            string Model,
+            int VehicleMakeId,
+            int VehicleModelId,
             int Year,
-            string Color,
+            int VehicleColorId,
             int Mileage,
             string DrivingRecord,
             int NumberOfDrivers,
@@ -18,8 +18,12 @@ namespace InsurancePortal.QuoteService.Domain.ValueObjects
         {
             if (string.IsNullOrWhiteSpace(VIN))
                 throw new ArgumentException("VIN cannot be empty");
-            if (string.IsNullOrWhiteSpace(Make))
-                throw new ArgumentException("Make cannot be empty");
+            if (VehicleMakeId <= 0)
+                throw new ArgumentException("Vehicle make is required");
+            if (VehicleModelId <= 0)
+                throw new ArgumentException("Vehicle model is required");
+            if (VehicleColorId <= 0)
+                throw new ArgumentException("Vehicle color is required");
             if (Year < 1900)
                 throw new ArgumentException("Year must be 1900 or later");
             if (Mileage < 0)
@@ -30,10 +34,10 @@ namespace InsurancePortal.QuoteService.Domain.ValueObjects
                 throw new ArgumentException("Estimated annual mileage must be greater than 0");
 
             this.VIN = VIN;
-            this.Make = Make;
-            this.Model = Model;
+            this.VehicleMakeId = VehicleMakeId;
+            this.VehicleModelId = VehicleModelId;
             this.Year = Year;
-            this.Color = Color;
+            this.VehicleColorId = VehicleColorId;
             this.Mileage = Mileage;
             this.DrivingRecord = DrivingRecord;
             this.NumberOfDrivers = NumberOfDrivers;
@@ -41,10 +45,10 @@ namespace InsurancePortal.QuoteService.Domain.ValueObjects
         }
 
         public string VIN { get; }
-        public string Make { get; }
-        public string Model { get; }
+        public int VehicleMakeId { get; }
+        public int VehicleModelId { get; }
         public int Year { get; }
-        public string Color { get; }
+        public int VehicleColorId { get; }
         public int Mileage { get; }
         public string DrivingRecord { get; }
         public int NumberOfDrivers { get; }
@@ -53,10 +57,10 @@ namespace InsurancePortal.QuoteService.Domain.ValueObjects
         protected bool Equals(AutoQuoteDetails other)
         {
             return VIN == other.VIN &&
-                   Make == other.Make &&
-                   Model == other.Model &&
+                   VehicleMakeId == other.VehicleMakeId &&
+                   VehicleModelId == other.VehicleModelId &&
                    Year == other.Year &&
-                   Color == other.Color &&
+                   VehicleColorId == other.VehicleColorId &&
                    Mileage == other.Mileage &&
                    DrivingRecord == other.DrivingRecord &&
                    NumberOfDrivers == other.NumberOfDrivers &&
@@ -75,10 +79,10 @@ namespace InsurancePortal.QuoteService.Domain.ValueObjects
         {
             var hash = new HashCode();
             hash.Add(VIN);
-            hash.Add(Make);
-            hash.Add(Model);
+            hash.Add(VehicleMakeId);
+            hash.Add(VehicleModelId);
             hash.Add(Year);
-            hash.Add(Color);
+            hash.Add(VehicleColorId);
             hash.Add(Mileage);
             hash.Add(DrivingRecord);
             hash.Add(NumberOfDrivers);

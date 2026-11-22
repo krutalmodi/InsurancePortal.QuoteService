@@ -1,6 +1,8 @@
+using InsurancePortal.QuoteService.Application.Abstractions.Cqrs;
 using InsurancePortal.QuoteService.Application.DTOs.Requests;
 using InsurancePortal.QuoteService.Application.DTOs.Responses;
-using InsurancePortal.QuoteService.Application.Services;
+using InsurancePortal.QuoteService.Application.Quotes.Commands;
+using InsurancePortal.QuoteService.Application.Quotes.Queries;
 using InsurancePortal.QuoteService.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,14 +15,14 @@ namespace InsurancePortal.QuoteService.API.Controllers
     [Route("api/quotes")]
     public class QuotesController : ControllerBase
     {
-        private readonly IQuoteService _quoteService;
+        private readonly IDispatcher _dispatcher;
         private readonly ILogger<QuotesController> _logger;
 
         private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        public QuotesController(IQuoteService quoteService, ILogger<QuotesController> logger)
+        public QuotesController(IDispatcher dispatcher, ILogger<QuotesController> logger)
         {
-            _quoteService = quoteService ?? throw new ArgumentNullException(nameof(quoteService));
+            _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -28,7 +30,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
         /// Create a new quote with a single product type
         /// Users do not need to be registered; each request is treated as a guest quote with a generated user ID and reference number
         /// </summary>
-        /// <param name="request">Quote request with single product details and ProductType</param>
+        /// <param name="request">Quote request with single product details and PrlooductType</param>
         /// <returns>Created quote with premium calculation</returns>
         [HttpPost]
         public async Task<ActionResult<QuoteResponse>> CreateQuote([FromBody] CreateQuoteRequest request)
@@ -39,7 +41,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                     return BadRequest("Quote request cannot be empty");
 
                 var guestUserId = CurrentUserId != null ? Guid.Parse(CurrentUserId) : Guid.NewGuid();
-                var quote = await _quoteService.CreateQuoteAsync(guestUserId, request, GetBearerToken());
+                var quote = await _dispatcher.SendAsync<CreateQuoteCommand, Quote>(new CreateQuoteCommand(guestUserId, request, GetBearerToken()));
                 var response = await MapToResponseAsync(quote);
 
                 return CreatedAtAction(nameof(GetQuote), new { id = quote.Id }, new
@@ -84,7 +86,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 if (id == Guid.Empty)
                     return BadRequest("Quote ID is required");
 
-                var quote = await _quoteService.GetQuoteAsync(id);
+                var quote = await _dispatcher.QueryAsync<GetQuoteByIdQuery, Quote?>(new GetQuoteByIdQuery(id));
 
                 if (quote == null)
                     return NotFound("Quote not found");
@@ -112,7 +114,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 if (userId == Guid.Empty)
                     return BadRequest("User ID is required");
 
-                var quotes = await _quoteService.GetUserQuotesAsync(userId);
+                var quotes = await _dispatcher.QueryAsync<GetUserQuotesQuery, IEnumerable<Quote>>(new GetUserQuotesQuery(userId));
                 var responses = new List<QuoteResponse>();
 
                 foreach (var quote in quotes)
@@ -143,7 +145,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 if (id == Guid.Empty)
                     return BadRequest("Quote ID is required");
 
-                var quote = await _quoteService.AcceptQuoteAsync(id);
+                var quote = await _dispatcher.SendAsync<AcceptQuoteCommand, Quote?>(new AcceptQuoteCommand(id));
 
                 if (quote == null)
                     return NotFound("Quote not found");
@@ -176,7 +178,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 if (id == Guid.Empty)
                     return BadRequest("Quote ID is required");
 
-                var quote = await _quoteService.CancelQuoteAsync(id);
+                var quote = await _dispatcher.SendAsync<CancelQuoteCommand, Quote?>(new CancelQuoteCommand(id));
 
                 if (quote == null)
                     return NotFound("Quote not found");
@@ -200,7 +202,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
         {
             try
             {
-                var quotes = await _quoteService.GetExpiredQuotesAsync();
+                var quotes = await _dispatcher.QueryAsync<GetExpiredQuotesQuery, IEnumerable<Quote>>(new GetExpiredQuotesQuery());
                 var responses = new List<QuoteResponse>();
 
                 foreach (var quote in quotes)
@@ -226,7 +228,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
         {
             try
             {
-                await _quoteService.ExpireOldQuotesAsync();
+                await _dispatcher.SendAsync<ExpireOldQuotesCommand, Unit>(new ExpireOldQuotesCommand());
                 return Ok(new { message = "Old quotes have been marked as expired" });
             }
             catch (Exception ex)
@@ -284,10 +286,10 @@ namespace InsurancePortal.QuoteService.API.Controllers
                             Id = autoQuote.Id,
                             Location = MapLocation(autoQuote.LocationId, autoQuote.UnitNumber, autoQuote.StreetAddress1, autoQuote.StreetAddress2, autoQuote.City, autoQuote.PostalCode, autoQuote.ProvinceId, autoQuote.CountryId),
                             VIN = autoQuote.Details?.VIN,
-                            Make = autoQuote.Details?.Make,
-                            Model = autoQuote.Details?.Model,
+                            VehicleMakeId = autoQuote.Details?.VehicleMakeId ?? 0,
+                            VehicleModelId = autoQuote.Details?.VehicleModelId ?? 0,
                             Year = autoQuote.Details?.Year ?? 0,
-                            Color = autoQuote.Details?.Color,
+                            VehicleColorId = autoQuote.Details?.VehicleColorId ?? 0,
                             Mileage = autoQuote.Details?.Mileage ?? 0,
                             DrivingRecord = autoQuote.Details?.DrivingRecord,
                             NumberOfDrivers = autoQuote.Details?.NumberOfDrivers ?? 0,

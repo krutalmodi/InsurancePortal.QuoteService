@@ -14,7 +14,7 @@
 4. [API Endpoints](#api-endpoints)
 5. [Design Patterns](#design-patterns)
 6. [Project Structure](#project-structure)
-7. [Service Layer Design](#service-layer-design)
+7. [CQRS Architecture](#cqrs-architecture)
 8. [Implementation Notes](#implementation-notes)
 9. [Future Enhancements](#future-enhancements)
 
@@ -75,7 +75,7 @@ Represents a complete quote request that can contain multiple product quotes.
 - `UserId`: Foreign key to User Service
 - `Status`: QuoteStatus enum (Active, Expired, Converted, Rejected)
 - `CreatedAt`: Timestamp of quote creation
-- `ValidUntil`: Expiration date (default 30 days)
+- `ValidUntil`: Expiration date, set to 30 days from creation (`DateTime.UtcNow.AddDays(30)`)
 - `TotalPremium`: Sum of all product premiums
 - `ReferenceNumber`: Unique human-readable reference (QT-YYYYMMDD-XXXXX)
 - `ProductQuotes`: Collection of product-specific quotes
@@ -93,6 +93,7 @@ bool IsExpired                            // Check expiration status
 **Business Rules:**
 - A quote must contain at least one product quote
 - Only one quote per product type per quote bundle
+- All quotes are valid for 30 days from creation only; after that they are treated as expired and cannot be accepted
 - Quote is automatically invalid if expired
 - Premium is automatically calculated and summed
 
@@ -200,10 +201,10 @@ public class HomeQuoteDetails
 public class AutoQuoteDetails
 {
 	public string VIN { get; }
-	public string Make { get; }
-	public string Model { get; }
+	public int VehicleMakeId { get; }   // FK -> VehicleMakeLookups
+	public int VehicleModelId { get; }  // FK -> VehicleModelLookups
 	public int Year { get; }
-	public string Color { get; }
+	public int VehicleColorId { get; }  // FK -> VehicleColorLookups
 	public int Mileage { get; }
 	public string DrivingRecord { get; }
 	public int NumberOfDrivers { get; }
@@ -287,10 +288,10 @@ CREATE TABLE [ProductQuotes] (
 
 	-- AutoQuote Columns
 	[VIN] NVARCHAR(20),
-	[Make] NVARCHAR(50),
-	[Model] NVARCHAR(50),
+	[VehicleMakeId] INT NOT NULL,   -- FK -> VehicleMakeLookups
+	[VehicleModelId] INT NOT NULL,  -- FK -> VehicleModelLookups
 	[VehicleYear] INT,
-	[Color] NVARCHAR(30),
+	[VehicleColorId] INT NOT NULL,  -- FK -> VehicleColorLookups
 	[Mileage] INT,
 	[DrivingRecord] NVARCHAR(50),
 	[NumberOfDrivers] INT,
@@ -389,10 +390,10 @@ Content-Type: application/json
   },
   "autoQuote": {
 	"vin": "1HGBH41JXMN109186",
-	"make": "Honda",
-	"model": "Civic",
+	"vehicleMakeId": 1,
+	"vehicleModelId": 1,
 	"year": 2018,
-	"color": "Blue",
+	"vehicleColorId": 6,
 	"mileage": 45000,
 	"drivingRecord": "Clean",
 	"numberOfDrivers": 2,
@@ -599,6 +600,49 @@ POST /api/quotes/expire-old
 
 ---
 
+## CQRS Architecture
+
+The Quote Service separates writes (commands) from reads (queries). The former `IQuoteService` facade has been removed; each use case is a dedicated message type with its own handler.
+
+### Dispatch Flow
+
+1. `QuotesController` builds a command or query record.
+2. It calls `IDispatcher.SendAsync<TCommand, TResult>` or `IDispatcher.QueryAsync<TQuery, TResult>`.
+3. `Dispatcher` (Infrastructure) resolves `ICommandHandler<,>` or `IQueryHandler<,>` from DI and invokes `HandleAsync`.
+
+No third-party mediator package is used. A missing handler registration throws `InvalidOperationException` with the message type name.
+
+### Commands (state changes)
+
+| Command | Result | Handler | Endpoint |
+|---------|--------|---------|----------|
+| `CreateQuoteCommand(UserId, Request, AccessToken)` | `Quote` | `CreateQuoteCommandHandler` | POST /api/quotes |
+| `AcceptQuoteCommand(QuoteId)` | `Quote?` | `AcceptQuoteCommandHandler` | POST /api/quotes/{id}/accept |
+| `CancelQuoteCommand(QuoteId)` | `Quote?` | `CancelQuoteCommandHandler` | POST /api/quotes/{id}/cancel |
+| `ExpireOldQuotesCommand()` | `Unit` | `ExpireOldQuotesCommandHandler` | POST /api/quotes/expire-old |
+
+`CreateQuoteCommand` carries the bearer token so the handler can forward it to LocationService.
+
+### Queries (reads)
+
+| Query | Result | Handler | Endpoint |
+|-------|--------|---------|----------|
+| `GetQuoteByIdQuery(QuoteId)` | `Quote?` | `GetQuoteByIdQueryHandler` | GET /api/quotes/{id} |
+| `GetUserQuotesQuery(UserId)` | `IEnumerable<Quote>` | `GetUserQuotesQueryHandler` | GET /api/quotes/user/{userId} |
+| `GetExpiredQuotesQuery()` | `IEnumerable<Quote>` | `GetExpiredQuotesQueryHandler` | GET /api/quotes/expired |
+
+### Registration
+
+`Program.cs` registers `IDispatcher` to `Dispatcher` and every handler as scoped. `IQuoteRepository` and the typed `ILocationClient` are registered alongside them. Handlers receive their dependencies through constructor injection.
+
+### Status
+
+- Migrated: all seven existing endpoints.
+- Removed: `IQuoteService`, `QuoteService`, `QuoteServiceWithEvents`.
+- Behavior is unchanged: routes, status codes, validation rules, and response mapping are preserved.
+
+---
+
 ## Design Patterns
 
 ### 1. **Aggregate Root Pattern (DDD)**
@@ -627,11 +671,11 @@ POST /api/quotes/expire-old
 - Supports unit testing with mock repositories
 - Centralizes database queries
 
-### 5. **Service Layer Pattern**
-- IQuoteService handles business logic
-- Orchestrates domain objects and repositories
-- Implements use cases (CreateQuote, AcceptQuote, etc.)
-- Transaction management
+### 5. **CQRS (Command Query Responsibility Segregation)**
+- Commands (state changes) and queries (reads) are separate types, each with a dedicated handler
+- Controllers dispatch through IDispatcher instead of an application service facade
+- Each handler owns one use case and depends only on the repository/client it needs
+- See [CQRS Architecture](#cqrs-architecture)
 
 ### 6. **DTO Pattern**
 - CreateQuoteRequest for API input
@@ -682,10 +726,24 @@ InsurancePortal.QuoteService/
 │   │   └── IEventPublisher.cs          (Event publishing abstraction)
 │   ├── Repositories/
 │   │   └── IQuoteRepository.cs         (Interface)
-│   ├── Services/
-│   │   ├── IQuoteService.cs            (Interface)
-│   │   ├── QuoteService.cs             (Implementation, registered in DI)
-│   │   └── QuoteServiceWithEvents.cs   (Implementation with event publishing, not registered)
+│   ├── Abstractions/
+│   │   └── Cqrs/
+│   │       ├── ICommand.cs             (Command marker)
+│   │       ├── IQuery.cs               (Query marker)
+│   │       ├── ICommandHandler.cs      (Command handler contract)
+│   │       ├── IQueryHandler.cs        (Query handler contract)
+│   │       ├── IDispatcher.cs          (Dispatch abstraction)
+│   │       └── Unit.cs                 (Void result)
+│   ├── Quotes/
+│   │   ├── Commands/
+│   │   │   ├── CreateQuoteCommand.cs       (Command + handler)
+│   │   │   ├── AcceptQuoteCommand.cs       (Command + handler)
+│   │   │   ├── CancelQuoteCommand.cs       (Command + handler)
+│   │   │   └── ExpireOldQuotesCommand.cs   (Command + handler)
+│   │   └── Queries/
+│   │       ├── GetQuoteByIdQuery.cs       (Query + handler)
+│   │       ├── GetUserQuotesQuery.cs      (Query + handler)
+│   │       └── GetExpiredQuotesQuery.cs   (Query + handler)
 │   └── Class1.cs                       (Placeholder)
 │
 ├── InsurancePortal.QuoteService.Domain/
@@ -713,6 +771,8 @@ InsurancePortal.QuoteService/
 └── InsurancePortal.QuoteService.Infrastructure/
     ├── Clients/
     │   └── LocationClient.cs           (HTTP client for LocationService)
+    ├── Cqrs/
+    │   └── Dispatcher.cs               (Resolves command/query handlers from DI)
     ├── Data/
     │   ├── QuoteDbContext.cs           (EF DbContext)
     │   ├── QuoteDbContextFactory.cs
