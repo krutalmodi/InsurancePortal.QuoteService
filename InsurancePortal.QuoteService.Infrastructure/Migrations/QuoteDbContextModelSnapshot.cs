@@ -1679,6 +1679,48 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("InsurancePortal.QuoteService.Domain.Entities.PostalRisk", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CountryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Crash")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DatasetVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Fire")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Hail")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PostalCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int>("ProvinceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Theft")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CountryId", "ProvinceId", "DatasetVersion", "PostalCode")
+                        .IsUnique();
+
+                    b.ToTable("PostalRisks", (string)null);
+                });
+
             modelBuilder.Entity("InsurancePortal.QuoteService.Domain.Entities.ProductQuote", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1720,6 +1762,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
 
                     b.Property<decimal>("QuotedPremium")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("RatingSnapshot")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("StatusId")
                         .HasColumnType("int");
@@ -1829,6 +1874,89 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasDatabaseName("IX_Quotes_UserId_CreatedAt");
 
                     b.ToTable("Quotes", (string)null);
+                });
+
+            modelBuilder.Entity("InsurancePortal.QuoteService.Domain.Entities.RatingFactor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Maximum")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Minimum")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Multiplier")
+                        .HasPrecision(12, 6)
+                        .HasColumnType("decimal(12,6)");
+
+                    b.Property<int>("RatingPlanId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RatingPlanId", "Type", "Minimum")
+                        .IsUnique();
+
+                    b.ToTable("RatingFactors", (string)null);
+                });
+
+            modelBuilder.Entity("InsurancePortal.QuoteService.Domain.Entities.RatingPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("BaseRate")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("CountryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrencyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EffectiveFromUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EffectiveToUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsPercentageOfHomeValue")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ProductTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProvinceId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("RiskDatasetVersion")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RatingPlans", (string)null);
                 });
 
             modelBuilder.Entity("InsurancePortal.QuoteService.Domain.Entities.AutoQuote", b =>
@@ -1977,6 +2105,15 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                     b.HasOne("InsurancePortal.QuoteService.Domain.Entities.Lookups.QuoteStatusLookup", null)
                         .WithMany()
                         .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("InsurancePortal.QuoteService.Domain.Entities.RatingFactor", b =>
+                {
+                    b.HasOne("InsurancePortal.QuoteService.Domain.Entities.RatingPlan", null)
+                        .WithMany()
+                        .HasForeignKey("RatingPlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

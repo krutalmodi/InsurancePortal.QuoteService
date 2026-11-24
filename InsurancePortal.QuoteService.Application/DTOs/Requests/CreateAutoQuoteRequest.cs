@@ -19,5 +19,12 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Requests
         public string DrivingRecord { get; set; }
         public int NumberOfDrivers { get; set; }
         public decimal EstimatedAnnualMileage { get; set; }
+
+        /// <summary>Vehicle type identifier as defined by the applicable rating plan.</summary>
+        public int? VehicleTypeId { get; set; }
+        /// <summary>Aggregate at-fault accident count for the drivers over the plan's lookback period.</summary>
+        public int? AtFaultAccidents { get; set; }
+        /// <summary>Aggregate speeding-ticket count for the drivers over the plan's lookback period.</summary>
+        public int? SpeedingTickets { get; set; }
     }
 }

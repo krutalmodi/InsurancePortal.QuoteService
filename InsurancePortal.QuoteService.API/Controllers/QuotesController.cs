@@ -3,6 +3,8 @@ using InsurancePortal.QuoteService.Application.DTOs.Requests;
 using InsurancePortal.QuoteService.Application.DTOs.Responses;
 using InsurancePortal.QuoteService.Application.Quotes.Commands;
 using InsurancePortal.QuoteService.Application.Quotes.Queries;
+using InsurancePortal.QuoteService.Application.Rating;
+using System.Text.Json;
 using InsurancePortal.QuoteService.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -275,6 +277,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                                 HasFireAlarm = homeQuote.Details?.HasFireAlarm ?? false,
                                 NumberOfOccupants = homeQuote.Details?.NumberOfOccupants ?? 0,
                                 QuotedPremium = homeQuote.QuotedPremium,
+                                Rating = homeQuote.RatingSnapshot == null ? null : JsonSerializer.Deserialize<RatingResult>(homeQuote.RatingSnapshot),
                                 ValidUntil = homeQuote.ValidUntil
                             };
                             break;
@@ -295,6 +298,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                             NumberOfDrivers = autoQuote.Details?.NumberOfDrivers ?? 0,
                             EstimatedAnnualMileage = autoQuote.Details?.EstimatedAnnualMileage ?? 0,
                             QuotedPremium = autoQuote.QuotedPremium,
+                            Rating = autoQuote.RatingSnapshot == null ? null : JsonSerializer.Deserialize<RatingResult>(autoQuote.RatingSnapshot),
                             ValidUntil = autoQuote.ValidUntil
                         };
                         break;

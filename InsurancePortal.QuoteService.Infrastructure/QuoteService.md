@@ -16,7 +16,8 @@
 6. [Project Structure](#project-structure)
 7. [CQRS Architecture](#cqrs-architecture)
 8. [Implementation Notes](#implementation-notes)
-9. [Future Enhancements](#future-enhancements)
+9. [Table-Driven Rating](#table-driven-rating)
+10. [Future Enhancements](#future-enhancements)
 
 ---
 
@@ -60,6 +61,8 @@
 ---
 
 ## Domain Model Design
+
+> The [table-driven rating engine](#table-driven-rating) is described below. The calculations in this section describe the legacy path when table-driven rating is disabled.
 
 ### Design Pattern: Table-Per-Hierarchy (TPH) with Composition
 
@@ -905,9 +908,9 @@ Subscribers:
    - **Note**: Currently exploring JSON serialization alternative if needed
 
 2. **Premium Calculation**
-   - **Decision**: Implement simplified logic in domain entities
-   - **Rationale**: Demonstration of product-specific logic, easily replaceable
-   - **Future**: Replace with AI/ML service calls for real-world pricing
+   - **Legacy**: Simplified calculations in domain entities when basic rating is disabled.
+   - **Configured**: [Table-driven Auto and Home rating](#table-driven-rating).
+   - **Operational requirement**: Supply and validate approved rating and risk data; the engine does not establish regulatory approval.
 
 3. **Reference Number Format**
    - **Format**: QT-YYYYMMDD-XXXXX
@@ -922,6 +925,41 @@ Subscribers:
    - **Design**: One Quote can contain multiple products
    - **Constraint**: Max one quote per product type per bundle
    - **Rationale**: Supports bundle discounts, common in insurance
+
+---
+
+## Table-Driven Rating
+
+### Configuration and migration
+
+`BasicRating:Enabled` controls Auto and Home rating in all environments; the checked-in setting is enabled. When disabled, Auto and Home use the existing hard-coded calculations; Health always uses its existing calculation. Apply EF migrations and supply independently approved rate plans, factors and postal-risk data before enabling the engine. There is no administration API; these tables must be maintained externally. Missing or ambiguous plans, risk records, factors or currencies cause an explicit error instead of falling back to legacy pricing. No new demonstration data is seeded by the current model.
+
+`ConfigureRatingJurisdiction` preserves existing rows, deactivates the two originally named sample plans, and initializes their new jurisdiction, currency and risk version fields to zero. Postal-risk jurisdiction fields are also initialized to zero. These old sample rates and risk levels are fabricated and remain in previously migrated databases for review, not for rating. Existing independently maintained rows likewise need their new fields populated before use. The original, uncommitted migration no longer inserts sample data on a fresh database; previously applied migrations are not rerun. The new migration does not delete potentially customized data. A rollback does not automatically republish the old plans.
+
+The prior conversion block was removed: any existing unexpired quote, including one previously calculated using sample data, can now be converted. Review or expire such quotes before enabling policy conversion. Existing premiums and snapshots are not automatically recalculated.
+
+### Data and calculation
+
+- Each `RatingPlans` row is a versioned plan with product, LocationService country and province IDs, currency lookup ID, postal-risk dataset version, base rate, publication status, and half-open UTC effective dates. Exactly one published plan must match the product and jurisdiction. The plan is annual (12 months); Auto uses a fixed base and Home a percentage of home value. Currency must exist in the currency lookup and have two decimal places.
+- `RatingFactors` contains inclusive integer bands and multipliers. Auto applies vehicle type, accident count, ticket count, hail, theft and crash factors; Home applies hail, theft and fire. Exactly one positive multiplier must match each input. Decimal calculations round only the final amount to two decimals, midpoint away from zero.
+- `PostalRisks` is maintained separately, keyed by country, province, plan-selected dataset version and normalized exact postal code. `PostalCode` is `nvarchar(16)`; rating removes spaces and uppercases the quote's postal code, so stored risk codes must use the same normalized format (for example, `T3J0A1`, not `T3J 0A1`). Each record supplies hail, theft, fire and crash levels. Provide approved classifications for every supported postal code; there is no hard-coded postal-code whitelist.
+- Auto requests must provide `vehicleTypeId`, `atFaultAccidents` and `speedingTickets`; zero counts must be explicit. The vehicle type must match an applicable configured factor. Counts are aggregate totals for all drivers for the applicable plan's externally defined lookback period; the caller is responsible for aggregation and verification. There is no per-driver calculation, lookback enforcement or claim-history verification.
+- `ProductQuotes.RatingSnapshot` retains the plan, base, inputs, factors, intermediate amounts, jurisdiction, dataset version, currency and premium. Responses expose it as `rating`. Snapshot-bearing quotes may be converted. Historical snapshots with the earlier currency format remain readable.
+
+The engine does not enforce immutable published plans or risk records, provide an approval workflow, support fixed adjustments or coverage-level rates, validate geographic data against an authoritative source, or provide bundle discounts. The feature switch and the older Auto/Home/Health calculations are not a substitute for approved production rates. Existing Auto mileage and Home security/age adjustments are not part of this table-driven calculation.
+
+### Rating implementation and verification
+
+`CreateQuoteCommandHandler` calls `IRatingEngine`; `BasicRatingEngine` separates the rating process into these steps:
+
+1. `GetRatingLocation` validates the product and, for Auto, requires a positive vehicle type and non-negative accident and ticket counts. It requires positive country and province IDs and a postal code, then removes spaces and uppercases the postal code.
+2. `GetEffectivePlanAsync` selects exactly one published plan for the product and jurisdiction at the current UTC time. Its start is inclusive and its end is exclusive. The base rate and risk dataset version must be positive; Home must use a percentage of home value and Auto a fixed base.
+3. `GetCurrencyAsync` requires an existing two-decimal currency. `GetPostalRiskAsync` requires an exact match for the normalized postal code, jurisdiction and the plan's risk dataset version.
+4. `CalculateBasePremium` calculates the fixed Auto base or Home value multiplied by its base rate. `GetFactorInputs` assembles the ordered product and geographic inputs described above.
+5. `ApplyFactors` and `FindFactor` require exactly one matching inclusive band with a positive multiplier for each input. They multiply in order and retain each unrounded intermediate amount. The engine rounds only the final premium to two decimal places, midpoint away from zero.
+6. The result records the plan, location, risk dataset, currency, 12-month term, base, applied factors and premium. The aggregate stores the product premium and snapshot and recomputes the quote total.
+
+Disabled rating and Health return no table-driven result so that the existing calculation remains in use. Validation or configuration failures are reported; they do not silently select a factor or fall back. `BasicRatingEngineTests` use explicit test-only data. The existing test project targets .NET 8 while application projects target .NET 10 and requires modernization to run as a full suite.
 
 ---
 

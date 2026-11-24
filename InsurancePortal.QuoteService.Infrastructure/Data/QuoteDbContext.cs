@@ -20,6 +20,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data
         // Core Quote Entities
         public DbSet<Quote> Quotes { get; set; }
         public DbSet<ProductQuote> ProductQuotes { get; set; }
+        public DbSet<RatingPlan> RatingPlans { get; set; }
+        public DbSet<RatingFactor> RatingFactors { get; set; }
+        public DbSet<PostalRisk> PostalRisks { get; set; }
 
         // Separate DbSets for each product type (Table-Per-Type inheritance)
         public DbSet<HomeQuote> HomeQuotes { get; set; }
@@ -56,6 +59,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data
             modelBuilder.ApplyConfiguration(new HomeQuoteConfiguration());
             modelBuilder.ApplyConfiguration(new AutoQuoteConfiguration());
             modelBuilder.ApplyConfiguration(new HealthQuoteConfiguration());
+            RatingConfiguration.ConfigureRating(modelBuilder);
 
             // Apply Tier 1 lookup configurations (simple lookups)
             modelBuilder.ApplyConfiguration(new QuoteStatusLookupConfiguration());

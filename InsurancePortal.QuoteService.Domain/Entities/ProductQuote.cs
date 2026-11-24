@@ -49,6 +49,11 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         public decimal QuotedPremium { get; set; }
 
         /// <summary>
+        /// Immutable calculation snapshot for table-driven quotes; null for legacy quotes.
+        /// </summary>
+        public string? RatingSnapshot { get; set; }
+
+        /// <summary>
         /// FK to CurrencyLookup
         /// Identifies the currency for this offer
         /// Default: USD

@@ -14,7 +14,7 @@ namespace InsurancePortal.QuoteService.Domain.Entities
             ProductQuotes = new List<ProductQuote>();
             CreatedAt = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;
-            Status = QuoteStatus.Active;
+            StatusId = (int)QuoteStatus.Active;
             ValidUntil = DateTime.UtcNow.AddDays(30); // Quote valid for 30 days
         }
 
@@ -90,7 +90,7 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         /// <summary>
         /// Add a product quote to this bundled quote
         /// </summary>
-        public void AddProductQuote(ProductQuote productQuote)
+        public void AddProductQuote(ProductQuote productQuote, decimal? calculatedPremium = null)
         {
             if (productQuote == null)
                 throw new ArgumentNullException(nameof(productQuote));
@@ -98,8 +98,11 @@ namespace InsurancePortal.QuoteService.Domain.Entities
             if (ProductQuotes.Any(pq => pq.ProductType == productQuote.ProductType))
                 throw new InvalidOperationException($"A {productQuote.ProductType} quote already exists in this bundle");
 
+            productQuote.Validate();
+            if (calculatedPremium < 0)
+                throw new ArgumentOutOfRangeException(nameof(calculatedPremium));
             productQuote.QuoteId = Id;
-            productQuote.QuotedPremium = productQuote.CalculatePremium();
+            productQuote.QuotedPremium = calculatedPremium ?? productQuote.CalculatePremium();
             productQuote.ValidUntil = ValidUntil;
             ProductQuotes.Add(productQuote);
 
@@ -137,7 +140,7 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         /// </summary>
         public void MarkAsConverted()
         {
-            Status = QuoteStatus.Converted;
+            StatusId = (int)QuoteStatus.Converted;
         }
 
         /// <summary>
@@ -145,7 +148,7 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         /// </summary>
         public void MarkAsExpired()
         {
-            Status = QuoteStatus.Expired;
+            StatusId = (int)QuoteStatus.Expired;
         }
 
         /// <summary>

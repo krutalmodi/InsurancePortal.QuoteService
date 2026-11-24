@@ -38,7 +38,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Repositories
         {
             return await _context.Quotes
                 .Include(q => q.ProductQuotes)
-                .Where(q => q.Status == status)
+                .Where(q => q.StatusId == (int)status)
                 .OrderByDescending(q => q.CreatedAt)
                 .ToListAsync();
         }
@@ -66,7 +66,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Repositories
         {
             return await _context.Quotes
                 .Include(q => q.ProductQuotes)
-                .Where(q => q.Status == QuoteStatus.Active && DateTime.UtcNow <= q.ValidUntil)
+                .Where(q => q.StatusId == (int)QuoteStatus.Active && DateTime.UtcNow <= q.ValidUntil)
                 .OrderByDescending(q => q.CreatedAt)
                 .ToListAsync();
         }

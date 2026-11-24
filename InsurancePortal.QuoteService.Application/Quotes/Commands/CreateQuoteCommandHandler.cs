@@ -2,6 +2,8 @@ using InsurancePortal.QuoteService.Application.Abstractions.Cqrs;
 using InsurancePortal.QuoteService.Application.Clients;
 using InsurancePortal.QuoteService.Application.DTOs.Requests;
 using InsurancePortal.QuoteService.Application.Repositories;
+using InsurancePortal.QuoteService.Application.Rating;
+using System.Text.Json;
 using InsurancePortal.QuoteService.Domain.Entities;
 using InsurancePortal.QuoteService.Domain.Enums;
 using InsurancePortal.QuoteService.Domain.ValueObjects;
@@ -15,11 +17,13 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
     {
         private readonly IQuoteRepository _repository;
         private readonly ILocationClient _locationClient;
+        private readonly IRatingEngine _ratingEngine;
 
-        public CreateQuoteCommandHandler(IQuoteRepository repository, ILocationClient locationClient)
+        public CreateQuoteCommandHandler(IQuoteRepository repository, ILocationClient locationClient, IRatingEngine ratingEngine)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _locationClient = locationClient ?? throw new ArgumentNullException(nameof(locationClient));
+            _ratingEngine = ratingEngine ?? throw new ArgumentNullException(nameof(ratingEngine));
         }
 
         public async Task<Quote> HandleAsync(CreateQuoteCommand command)
@@ -108,7 +112,7 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
                             StatusId = (int)ProductQuoteStatusEnum.Pending,
                             CurrencyId = location.CountryId == 1 ? (int)CurrencyEnum.USD : (int)CurrencyEnum.CAD // Example logic for currency based on country
                         };
-                        quote.AddProductQuote(homeQuote);
+                        await AddRatedProductAsync(quote, homeQuote, null);
                         break;
                     }
                 case ProductType.Auto:
@@ -141,7 +145,10 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
                             StatusId = (int)ProductQuoteStatusEnum.Pending,
                             CurrencyId = location.CountryId == 1 ? (int)CurrencyEnum.USD : (int)CurrencyEnum.CAD // Example logic for currency based on country
                         };
-                        quote.AddProductQuote(autoQuote);
+                        var autoInput = request.AutoQuote.VehicleTypeId.HasValue && request.AutoQuote.AtFaultAccidents.HasValue && request.AutoQuote.SpeedingTickets.HasValue
+                            ? new AutoRatingInput(request.AutoQuote.VehicleTypeId.Value, request.AutoQuote.AtFaultAccidents.Value, request.AutoQuote.SpeedingTickets.Value)
+                            : null;
+                        await AddRatedProductAsync(quote, autoQuote, autoInput);
                         break;
                     }
                 case ProductType.Health:
@@ -177,6 +184,17 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
                 default:
                     throw new InvalidOperationException($"Unknown product type: {request.ProductType}");
             }
+        }
+
+        private async Task AddRatedProductAsync(Quote quote, ProductQuote product, AutoRatingInput? autoInput)
+        {
+            var result = await _ratingEngine.RateAsync(product, autoInput);
+            if (result != null)
+            {
+                product.CurrencyId = result.CurrencyId;
+                product.RatingSnapshot = JsonSerializer.Serialize(result);
+            }
+            quote.AddProductQuote(product, result?.Premium);
         }
 
         private async Task<LocationDto> CreateLocationAsync(LocationRequest? addressRequest, string accessToken)

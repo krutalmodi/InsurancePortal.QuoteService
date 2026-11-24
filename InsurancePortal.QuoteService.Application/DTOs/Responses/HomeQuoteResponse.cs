@@ -20,6 +20,7 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Responses
         public bool HasFireAlarm { get; set; }
         public int NumberOfOccupants { get; set; }
         public decimal QuotedPremium { get; set; }
+        public InsurancePortal.QuoteService.Application.Rating.RatingResult? Rating { get; set; }
         public DateTime ValidUntil { get; set; }
     }
 }

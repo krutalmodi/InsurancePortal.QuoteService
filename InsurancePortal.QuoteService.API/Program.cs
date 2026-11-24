@@ -8,6 +8,8 @@ using InsurancePortal.QuoteService.Application.Quotes.Commands;
 using InsurancePortal.QuoteService.Domain.Entities;
 using InsurancePortal.QuoteService.Application.Quotes.Queries;
 using InsurancePortal.QuoteService.Application.Repositories;
+using InsurancePortal.QuoteService.Application.Rating;
+using InsurancePortal.QuoteService.Infrastructure.Services;
 using InsurancePortal.QuoteService.Infrastructure.Clients;
 using InsurancePortal.QuoteService.Infrastructure.Cqrs;
 using InsurancePortal.QuoteService.Infrastructure.Data;
@@ -69,6 +71,12 @@ builder.Services.AddScoped<IQueryHandler<GetExpiredQuotesQuery, IEnumerable<Quot
 
 // Register repositories and clients
 builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
+var basicRatingEnabled = builder.Configuration.GetValue<bool>("BasicRating:Enabled");
+builder.Services.AddSingleton(new BasicRatingOptions
+{
+    Enabled = basicRatingEnabled
+});
+builder.Services.AddScoped<IRatingEngine, BasicRatingEngine>();
 builder.Services.AddHttpClient<ILocationClient, LocationClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["LocationService:BaseUrl"] ?? throw new InvalidOperationException("LocationService:BaseUrl is not configured")));
 
