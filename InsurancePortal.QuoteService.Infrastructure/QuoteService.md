@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Quote Service** is a microservice for the Insurance Portal that handles quote generation for multiple insurance products (Home, Auto, Health) with support for bundled quotes. This document captures the complete architecture, design decisions, and implementation details using Spec-Driven Development (SDD) approach.
+**Quote Service** generates Home, Auto and Health quotes. The domain aggregate supports multiple product types, but each current API creation request creates a new quote with exactly one product. This document describes the current implementation; planned functionality is identified explicitly.
 
 ---
 
@@ -12,12 +12,18 @@
 2. [Domain Model Design](#domain-model-design)
 3. [Database Design](#database-design)
 4. [API Endpoints](#api-endpoints)
-5. [Design Patterns](#design-patterns)
-6. [Project Structure](#project-structure)
-7. [CQRS Architecture](#cqrs-architecture)
-8. [Implementation Notes](#implementation-notes)
-9. [Table-Driven Rating](#table-driven-rating)
-10. [Future Enhancements](#future-enhancements)
+5. [CQRS Architecture](#cqrs-architecture)
+6. [Design Patterns](#design-patterns)
+7. [Project Structure](#project-structure)
+8. [Service Layer Design](#service-layer-design)
+9. [Implementation Notes](#implementation-notes)
+10. [Table-Driven Rating](#table-driven-rating)
+11. [Future Enhancements](#future-enhancements)
+12. [Configuration](#configuration)
+13. [Testing Strategy](#testing-strategy)
+14. [Deployment](#deployment)
+15. [Related Services](#related-services)
+16. [References](#references)
 
 ---
 
@@ -25,38 +31,18 @@
 
 ### High-Level Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│           API Gateway / User Service        │
-│  (Authentication via JWT Tokens)            │
-└──────────────────┬──────────────────────────┘
-				   │
-		┌──────────▼──────────┐
-		│                     │
-	┌───▼────────┐    ┌──────▼──────┐
-	│ Quote      │    │ Azure       │
-	│ Service    │    │ Service Bus │
-	│ API        │    │ (Events)    │
-	└───┬────────┘    └──────┬──────┘
-		│                    │
-	┌───▼────────────────────▼──────┐
-	│   SQL Database                │
-	│   (Quotes, ProductQuotes)      │
-	└───────────────────────────────┘
-		│
-		└──► Quote Events:
-			 - QuoteCreated
-			 - QuoteAccepted
-			 - QuoteExpired
-			 - QuoteUpdated
+```text
+Client -> QuotesController -> CQRS dispatcher -> command/query handler
+												 |-> QuoteRepository -> SQL Server
+												 |-> BasicRatingEngine -> SQL Server
+												 `-> LocationClient -> LocationService
 ```
 
 ### Microservices Integration
 
-- **User Service**: Provides authentication and authorization via JWT tokens
-- **Policy Service**: Consumes `QuoteAccepted` events to create policies
-- **Billing Service**: Consumes `QuoteAccepted` events for invoicing
-- **Notification Service**: Consumes quote events for email/SMS alerts
+- **Identity Service**: issues JWTs validated by the API using configured issuer, audience and signing key.
+- **LocationService**: creates an address for each product quote through an HTTP client; the returned address is also snapshotted on the product quote. Location creation and quote persistence are separate operations, not a distributed transaction.
+- **Policy, Billing and Notification services**: prospective consumers; current quote handlers do not publish events. A Service Bus publisher exists but is not registered or invoked.
 
 ---
 
@@ -64,9 +50,9 @@
 
 > The [table-driven rating engine](#table-driven-rating) is described below. The calculations in this section describe the legacy path when table-driven rating is disabled.
 
-### Design Pattern: Table-Per-Hierarchy (TPH) with Composition
+### Design Pattern: Table-Per-Type (TPT) with Composition
 
-The Quote Service uses a sophisticated domain model supporting multiple insurance products with different requirements, all within a single quote entity.
+The `ProductQuotes` base table and separate product tables use TPT inheritance. Product details are EF-owned value objects flattened into each derived table.
 
 ### Key Domain Entities
 
@@ -75,8 +61,8 @@ Represents a complete quote request that can contain multiple product quotes.
 
 **Properties:**
 - `Id`: Unique identifier (GUID)
-- `UserId`: Foreign key to User Service
-- `Status`: QuoteStatus enum (Active, Expired, Converted, Rejected)
+- `UserId`: External user identifier (GUID), not a database foreign key
+- `StatusId`: Integer reference to `QuoteStatusLookups`; the obsolete `Status` property is also mapped
 - `CreatedAt`: Timestamp of quote creation
 - `ValidUntil`: Expiration date, set to 30 days from creation (`DateTime.UtcNow.AddDays(30)`)
 - `TotalPremium`: Sum of all product premiums
@@ -85,12 +71,12 @@ Represents a complete quote request that can contain multiple product quotes.
 
 **Key Methods:**
 ```csharp
-void AddProductQuote(ProductQuote quote)  // Add product to bundle
-void RemoveProductQuote(ProductType type) // Remove product from bundle
-void Validate()                           // Validate entire quote
-void MarkAsConverted()                    // Convert to policy
-void MarkAsExpired()                      // Mark as expired
-bool IsExpired                            // Check expiration status
+void AddProductQuote(ProductQuote productQuote, decimal? calculatedPremium = null)
+void RemoveProductQuote(ProductType productType)
+void Validate()
+void MarkAsConverted()                    // Set converted status ID; no policy is created
+void MarkAsExpired()
+bool IsExpired { get; }
 ```
 
 **Business Rules:**
@@ -110,7 +96,7 @@ Abstract base class for all product-specific quotes using inheritance.
 - `QuotedPremium`: Calculated premium for this product
 - `ValidUntil`: Inherited from parent quote
 - `CreatedAt`: Timestamp
-- `Discriminator`: TPH discriminator column
+- `Discriminator`: Stored property; inheritance uses TPT, not a TPH discriminator mapping
 
 **Abstract Methods:**
 ```csharp
@@ -135,7 +121,6 @@ Home insurance quote with property-specific details.
 ```csharp
 HomeQuote home = new HomeQuote(
 	new HomeQuoteDetails(
-		homeAddress: "123 Main St, Springfield",
 		squareFootage: 2500,
 		yearBuilt: 1995,
 		homeType: "Single Family",
@@ -170,8 +155,8 @@ Health insurance quote with individual-specific details.
 **Premium Calculation Logic:**
 - Base: $500
 - Age (<30): -20%
-- Age (40-50): +25%
-- Age (>50): +50%
+- Age (40 through 49): +25%
+- Age (50 or older): +50%
 - Pre-existing conditions: +35%
 - Smoker: +50%
 - Dependents: +$100 per dependent
@@ -185,7 +170,6 @@ Value objects are immutable, validated at construction, and compared by value ra
 public class HomeQuoteDetails
 {
 	// All immutable properties
-	public string HomeAddress { get; }
 	public int SquareFootage { get; }
 	public int YearBuilt { get; }
 	public string HomeType { get; }
@@ -230,15 +214,13 @@ public class HealthQuoteDetails
 
 ### Enumerations
 
-**QuoteStatus**
-- `Active`: Quote is valid and can be accepted
-- `Expired`: Quote has passed ValidUntil date
-- `Converted`: Quote has been accepted and converted to policy
-- `Rejected`: Quote was rejected by user or system
+**Quote status enums**
+
+`QuoteStatus` has `Active = 1`, `Expired = 2`, `Converted = 3`, and `Rejected = 4`. The separate `QuoteStatusEnum` defines `Draft = 1`, `Submitted = 2`, `InProgress = 3`, `Quoted = 4`, `Accepted = 5`, `Rejected = 6`, `Expired = 7`, and `Cancelled = 8`. Creation uses the latter; `MarkAsConverted` and `MarkAsExpired` use the former. Their numeric meanings conflict, and the response maps the obsolete `Status` property rather than `StatusId`. Conversion does not create a policy.
 
 **ProductType**
-- `Home`: Home insurance (value = 1)
-- `Auto`: Auto insurance (value = 2)
+- `Auto`: Auto insurance (value = 1)
+- `Home`: Home insurance (value = 2)
 - `Health`: Health insurance (value = 3)
 
 ---
@@ -248,114 +230,38 @@ public class HealthQuoteDetails
 ### Technology Stack
 - **Database**: SQL Server
 - **ORM**: Entity Framework Core 10.0
-- **Pattern**: Table-Per-Hierarchy (TPH) for inheritance
+- **Inheritance**: TPT, with owned product detail objects flattened to product tables.
 
 ### Database Schema
 
-#### Quotes Table
-```sql
-CREATE TABLE [Quotes] (
-	[Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-	[UserId] UNIQUEIDENTIFIER NOT NULL,
-	[Status] INT NOT NULL,
-	[CreatedAt] DATETIME2 NOT NULL,
-	[ValidUntil] DATETIME2 NOT NULL,
-	[TotalPremium] DECIMAL(18,2) NOT NULL,
-	[ReferenceNumber] NVARCHAR(50)
-);
+The EF configurations and migrations in `InsurancePortal.QuoteService.Infrastructure\Data\Configurations` and `InsurancePortal.QuoteService.Infrastructure\Migrations` define the schema; the actual database depends on which migrations have been applied.
 
-CREATE INDEX [IX_Quotes_UserId] ON [Quotes]([UserId]);
-CREATE INDEX [IX_Quotes_Status] ON [Quotes]([Status]);
-CREATE INDEX [IX_Quotes_CreatedAt] ON [Quotes]([CreatedAt]);
-```
+| Table | Key details |
+|-------|-------------|
+| `Quotes` | GUID ID and external `UserId`; integer `StatusId`; unique required `ReferenceNumber`; validity, audit fields and `TotalPremium` (`decimal(18,2)`). The obsolete `Status` enum is also mapped. |
+| `ProductQuotes` | GUID ID and `QuoteId` FK; product, status, currency, provider and quoted-by lookup IDs; premium, validity and optional JSON `RatingSnapshot`. Deleting a parent quote with product rows is restricted. |
+| `HomeQuotes`, `AutoQuotes`, `HealthQuotes` | Derived TPT tables share the base ID and store their respective owned details and address snapshots. `LocationId` is an external LocationService ID, not a local database FK. Auto make, model and color use integer lookup IDs. |
+| Lookup tables | Integer IDs, explicitly seeded; vehicle models reference makes. See `QuoteDbContext` and its configurations for the current set and relationships. |
+| `RatingPlans`, `RatingFactors`, `PostalRisks` | Configuration for the [rating engine](#table-driven-rating); the postal code column is `nvarchar(16)`. |
 
-#### ProductQuotes Table (TPH)
-```sql
-CREATE TABLE [ProductQuotes] (
-	[Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-	[QuoteId] UNIQUEIDENTIFIER NOT NULL,
-	[Discriminator] NVARCHAR(50) NOT NULL,  -- HomeQuote, AutoQuote, HealthQuote
-	[QuotedPremium] DECIMAL(18,2) NOT NULL,
-	[ValidUntil] DATETIME2 NOT NULL,
-	[CreatedAt] DATETIME2 NOT NULL,
+`(QuoteId, ProductTypeId)` has a non-unique index; the aggregate enforces one product per type, not a database unique constraint. `ProductQuotes.StatusId` is currently configured as a foreign key to `QuoteStatusLookups`, although product status values and comments refer to `ProductQuoteStatusLookups`.
 
-	-- HomeQuote Columns
-	[HomeAddress] NVARCHAR(500),
-	[SquareFootage] INT,
-	[YearBuilt] INT,
-	[HomeType] NVARCHAR(50),
-	[HomeValue] DECIMAL(18,2),
-	[HasSecuritySystem] BIT,
-	[HasFireAlarm] BIT,
-	[NumberOfOccupants] INT,
-
-	-- AutoQuote Columns
-	[VIN] NVARCHAR(20),
-	[VehicleMakeId] INT NOT NULL,   -- FK -> VehicleMakeLookups
-	[VehicleModelId] INT NOT NULL,  -- FK -> VehicleModelLookups
-	[VehicleYear] INT,
-	[VehicleColorId] INT NOT NULL,  -- FK -> VehicleColorLookups
-	[Mileage] INT,
-	[DrivingRecord] NVARCHAR(50),
-	[NumberOfDrivers] INT,
-	[EstimatedAnnualMileage] DECIMAL(18,2),
-
-	-- HealthQuote Columns
-	[Age] INT,
-	[HealthStatus] NVARCHAR(50),
-	[HasPreexistingConditions] BIT,
-	[Smoker] BIT,
-	[CoverageType] NVARCHAR(50),
-	[Dependents] INT,
-
-	FOREIGN KEY ([QuoteId]) REFERENCES [Quotes]([Id]) ON DELETE CASCADE
-);
-
-CREATE INDEX [IX_ProductQuotes_QuoteId] ON [ProductQuotes]([QuoteId]);
-```
-
-### Entity Relationship Diagram
-
-```
-┌─────────────────┐
-│     Quotes      │
-├─────────────────┤
-│ Id (PK)         │
-│ UserId          │
-│ Status          │
-│ CreatedAt       │
-│ ValidUntil      │
-│ TotalPremium    │
-│ ReferenceNumber │
-└────────┬────────┘
-		 │
-		 │ 1 to Many
-		 │
-	┌────▼─────────────────┐
-	│   ProductQuotes      │
-	├──────────────────────┤
-	│ Id (PK)              │
-	│ QuoteId (FK)         │
-	│ Discriminator (TPH)  │
-	│ QuotedPremium        │
-	│ ValidUntil           │
-	│ CreatedAt            │
-	│                      │
-	│ [Product-Specific]   │
-	│ HomeAddress (Home)   │
-	│ VIN (Auto)           │
-	│ Age (Health)         │
-	└──────────────────────┘
+```text
+Quotes (1) ---< ProductQuotes
+				   |-- HomeQuotes (TPT)
+				   |-- AutoQuotes (TPT)
+				   `-- HealthQuotes (TPT)
+RatingPlans (1) ---< RatingFactors
+PostalRisks: jurisdiction + dataset version + postal code
 ```
 
 ---
 
 ## API Endpoints
 
-### Base URL
-```
-https://api.insuranceportal.com/api/quotes
-```
+### Base route
+
+`/api/quotes` on the configured API host.
 
 ### Authentication
 All endpoints require JWT token in Authorization header:
@@ -364,88 +270,47 @@ Authorization: Bearer <jwt_token>
 ```
 
 **Implementation:** JWT Bearer authentication (`Microsoft.AspNetCore.Authentication.JwtBearer`) is registered in `Program.cs` and validates tokens issued by the Identity Service:
-- **Issuer**: `InsurancePortal.IdentityService.Api` (`Jwt:Issuer`)
-- **Audience**: `InsurancePortal.QuoteService.Api` (`Jwt:Audience`)
-- **Signing key**: Symmetric key from `Jwt:Secret` (HMAC-SHA256)
-- **Validation**: Issuer, audience, signing key, and lifetime are validated; clock skew is zero
-- **Pipeline**: `UseAuthentication()` runs before `UseAuthorization()`; `QuotesController` is protected with `[Authorize]`
+- **Issuer and audience**: configurable through `Jwt:Issuer` and `Jwt:Audience`; both are `InsurancePortal.IdentityService.Api` in the checked-in settings.
+- **Signing key**: Symmetric key from `Jwt:Secret`.
+- **Validation**: Issuer, audience, signing key, and lifetime are validated; clock skew is not explicitly configured.
+- **Pipeline**: `UseAuthentication()` runs before `UseAuthorization()`; `QuotesController` is protected with `[Authorize]`.
+
+The controller parses the name identifier claim as a GUID for creation, generating an ID when the claim is absent. A present non-GUID claim produces a server error. This fallback does not allow unauthenticated access. There are no per-resource ownership, role or permission checks in this controller; `GET /user/{userId}` accepts the user ID from the route.
 
 ### Endpoints
 
 #### 1. Create Quote (POST /api/quotes)
-Creates a new bundled quote with one or more products.
+Creates one quote for the specified `productType` (Auto = 1, Home = 2, Health = 3). The corresponding product object and its `location` are required. The location IDs below are illustrative and must match the LocationService installation; the address and rating data must also exist in the relevant systems.
 
-**Request:**
-```http
-POST /api/quotes?userId={userId}
-Content-Type: application/json
-
+```json
 {
-  "homeQuote": {
-	"homeAddress": "123 Main St, Springfield",
-	"squareFootage": 2500,
-	"yearBuilt": 1995,
-	"homeType": "Single Family",
-	"homeValue": 450000,
-	"hasSecuritySystem": true,
-	"hasFireAlarm": true,
-	"numberOfOccupants": 4
-  },
+  "productType": 1,
   "autoQuote": {
+	"location": {
+	  "locationTypeId": 1,
+	  "streetAddress1": "123 Example Street NE",
+	  "city": "Calgary",
+	  "postalCode": "T3J 0A1",
+	  "provinceId": 1,
+	  "countryId": 1
+	},
 	"vin": "1HGBH41JXMN109186",
 	"vehicleMakeId": 1,
 	"vehicleModelId": 1,
-	"year": 2018,
-	"vehicleColorId": 6,
+	"vehicleColorId": 1,
+	"year": 2020,
 	"mileage": 45000,
 	"drivingRecord": "Clean",
-	"numberOfDrivers": 2,
-	"estimatedAnnualMileage": 15000
-  },
-  "healthQuote": null
+	"numberOfDrivers": 1,
+	"estimatedAnnualMileage": 15000,
+	"vehicleTypeId": 1,
+	"atFaultAccidents": 0,
+	"speedingTickets": 0
+  }
 }
 ```
 
-**Response (201 Created):**
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "userId": "660e8400-e29b-41d4-a716-446655440000",
-  "referenceNumber": "QT-20261011-ABC12",
-  "status": "Active",
-  "createdAt": "2026-10-11T10:30:00Z",
-  "validUntil": "2026-11-10T10:30:00Z",
-  "totalPremium": 3750.50,
-  "homeQuote": {
-	"id": "750e8400-e29b-41d4-a716-446655440000",
-	"homeAddress": "123 Main St, Springfield",
-	"squareFootage": 2500,
-	"yearBuilt": 1995,
-	"homeType": "Single Family",
-	"homeValue": 450000,
-	"hasSecuritySystem": true,
-	"hasFireAlarm": true,
-	"numberOfOccupants": 4,
-	"quotedPremium": 2112.75,
-	"validUntil": "2026-11-10T10:30:00Z"
-  },
-  "autoQuote": {
-	"id": "850e8400-e29b-41d4-a716-446655440000",
-	"vin": "1HGBH41JXMN109186",
-	"make": "Honda",
-	"model": "Civic",
-	"year": 2018,
-	"color": "Blue",
-	"mileage": 45000,
-	"drivingRecord": "Clean",
-	"numberOfDrivers": 2,
-	"estimatedAnnualMileage": 15000,
-	"quotedPremium": 1637.75,
-	"validUntil": "2026-11-10T10:30:00Z"
-  },
-  "healthQuote": null
-}
-```
+On success the response is `201 Created` with `{ message, referenceNumber, quote }`. The quote contains its product, location snapshot, premium and, for table-rated Auto/Home, the rating breakdown. The handler sets `StatusId` to Draft, while the response currently reads the separate obsolete `Status` property; the response status must not be assumed to reflect `StatusId`.
 
 **Error Responses:**
 - `400 Bad Request`: Invalid input data
@@ -462,21 +327,7 @@ Retrieve a specific quote with all product details.
 GET /api/quotes/550e8400-e29b-41d4-a716-446655440000
 ```
 
-**Response (200 OK):**
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "userId": "660e8400-e29b-41d4-a716-446655440000",
-  "referenceNumber": "QT-20261011-ABC12",
-  "status": "Active",
-  "createdAt": "2026-10-11T10:30:00Z",
-  "validUntil": "2026-11-10T10:30:00Z",
-  "totalPremium": 3750.50,
-  "homeQuote": {...},
-  "autoQuote": {...},
-  "healthQuote": null
-}
-```
+**Response (200 OK):** A `QuoteResponse` with product details and, when available, the stored rating breakdown. The response status caveat described above also applies.
 
 **Error Responses:**
 - `404 Not Found`: Quote does not exist
@@ -492,51 +343,23 @@ Retrieve all quotes for a specific user.
 GET /api/quotes/user/660e8400-e29b-41d4-a716-446655440000
 ```
 
-**Response (200 OK):**
-```json
-[
-  {
-	"id": "550e8400-e29b-41d4-a716-446655440000",
-	"userId": "660e8400-e29b-41d4-a716-446655440000",
-	"referenceNumber": "QT-20261011-ABC12",
-	"status": "Active",
-	...
-  },
-  {
-	"id": "560e8400-e29b-41d4-a716-446655440000",
-	"userId": "660e8400-e29b-41d4-a716-446655440000",
-	"referenceNumber": "QT-20261010-XYZ99",
-	"status": "Expired",
-	...
-  }
-]
-```
+**Response (200 OK):** An array of `QuoteResponse` objects.
 
 ---
 
 #### 4. Accept Quote (POST /api/quotes/{id}/accept)
-Accept a quote and convert it to a policy. This triggers downstream events.
+Marks a non-expired quote as converted and persists it. The handler does not create a policy or publish an event.
 
 **Request:**
 ```http
 POST /api/quotes/550e8400-e29b-41d4-a716-446655440000/accept
 ```
 
-**Response (200 OK):**
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "Converted",
-  ...
-}
-```
+**Response (200 OK):** The updated `QuoteResponse`; its `status` is mapped from the obsolete `Status` property, not `StatusId`.
 
 **Side Effects:**
-- Quote status changed to `Converted`
-- `QuoteAccepted` event published to Service Bus
-- Policy Service receives event and creates policy
-- Billing Service receives event and creates invoice
-- Notification Service receives event and sends confirmation email
+- The domain updates `StatusId` to `(int)QuoteStatus.Converted` and persists the quote.
+- No downstream events are published by this handler.
 
 **Error Responses:**
 - `400 Bad Request`: Quote is expired
@@ -553,37 +376,24 @@ Cancel a quote and mark it as expired.
 POST /api/quotes/550e8400-e29b-41d4-a716-446655440000/cancel
 ```
 
-**Response (200 OK):**
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "Expired",
-  ...
-}
-```
+**Response (200 OK):** The updated `QuoteResponse`; the response status caveat applies.
 
 ---
 
 #### 6. Get Expired Quotes (GET /api/quotes/expired)
-Admin endpoint to retrieve all expired quotes.
+Retrieves quotes past `ValidUntil`, regardless of their status ID. The controller does not enforce an admin role.
 
 **Request:**
 ```http
 GET /api/quotes/expired
 ```
 
-**Response (200 OK):**
-```json
-[
-  {...},
-  {...}
-]
-```
+**Response (200 OK):** An array of `QuoteResponse` objects.
 
 ---
 
 #### 7. Expire Old Quotes (POST /api/quotes/expire-old)
-Admin/scheduled task endpoint to mark all old quotes as expired.
+Marks old quotes as expired; the controller does not enforce an admin role.
 
 **Request:**
 ```http
@@ -597,9 +407,7 @@ POST /api/quotes/expire-old
 }
 ```
 
-**Used By:**
-- Scheduled Azure Function (runs daily)
-- Background job service
+The endpoint is available for an external scheduler, but no scheduler is implemented or registered here.
 
 ---
 
@@ -654,12 +462,10 @@ No third-party mediator package is used. A missing handler registration throws `
 - Ensures consistency of bundled quotes
 - Centralizes business logic for multi-product operations
 
-### 2. **Table-Per-Hierarchy (TPH) Inheritance**
-- Single ProductQuotes table for all product types
-- Discriminator column determines product type
-- Efficient queries for single product type
-- Simplifies relationship management
-- Trade-off: Some NULL columns for each product type (acceptable)
+### 2. **Table-Per-Type (TPT) Inheritance**
+- Common offer data is stored in `ProductQuotes`.
+- `AutoQuotes`, `HomeQuotes` and `HealthQuotes` contain product-specific columns and share the base ID.
+- Retrieving product details involves joins to the derived tables.
 
 ### 3. **Value Objects (DDD)**
 - HomeQuoteDetails, AutoQuoteDetails, HealthQuoteDetails
@@ -739,15 +545,9 @@ InsurancePortal.QuoteService/
 │   │       └── Unit.cs                 (Void result)
 │   ├── Quotes/
 │   │   ├── Commands/
-│   │   │   ├── CreateQuoteCommand.cs       (Command + handler)
-│   │   │   ├── AcceptQuoteCommand.cs       (Command + handler)
-│   │   │   ├── CancelQuoteCommand.cs       (Command + handler)
-│   │   │   └── ExpireOldQuotesCommand.cs   (Command + handler)
-│   │   └── Queries/
-│   │       ├── GetQuoteByIdQuery.cs       (Query + handler)
-│   │       ├── GetUserQuotesQuery.cs      (Query + handler)
-│   │       └── GetExpiredQuotesQuery.cs   (Query + handler)
-│   └── Class1.cs                       (Placeholder)
+│   │   │   └── Create, Accept, Cancel and ExpireOld command and handler files
+│   │   └── Queries/                    (GetById, GetUser and GetExpired query files)
+│   └── Rating/                         (Rating contracts and results)
 │
 ├── InsurancePortal.QuoteService.Domain/
 │   ├── Entities/
@@ -790,12 +590,11 @@ InsurancePortal.QuoteService/
     │       └── SeedData.cs
     ├── EventPublishing/
     │   └── ServiceBusEventPublisher.cs (Azure Service Bus publisher)
-    ├── Migrations/
-    │   ├── 20261120213958_InitialQuotes.cs
-    │   ├── 20261120213958_InitialQuotes.Designer.cs
-    │   └── QuoteDbContextModelSnapshot.cs
+    ├── Migrations/                     (Initial schema, vehicle lookups, rating and postal-code changes)
     ├── Repositories/
     │   └── QuoteRepository.cs          (Implementation)
+    ├── Services/
+    │   └── BasicRatingEngine.cs         (Configured Auto and Home rating)
     └── QuoteService.md                 (This file)
 ```
 
@@ -803,94 +602,38 @@ InsurancePortal.QuoteService/
 
 ## Service Layer Design
 
-### QuoteService Class
+The use cases are implemented by CQRS handlers rather than a `QuoteService` class.
 
-**Purpose**: Orchestrates quote operations and implements business logic
+### Quote creation
 
-**Key Methods:**
+1. The controller derives the user ID from the name identifier claim when present and forwards the bearer token.
+2. `CreateQuoteCommandHandler` validates the request and product type, creates a new quote and reference number, and calls LocationService with the submitted address.
+3. It creates the selected product and snapshots the returned location. Auto and Home use `IRatingEngine` when enabled; otherwise the domain calculation is used. Health always uses the domain calculation.
+4. The aggregate validates the product, sets its premium and validity, recalculates the total, and the repository saves the quote. The location request precedes rating and quote persistence; a later failure does not roll back the external location.
 
-#### CreateQuoteAsync(Guid userId, CreateQuoteRequest request)
-- Validates input (at least one product must be provided)
-- Creates domain entities from DTOs
-- Constructs ProductQuotes based on request
-- Adds all products to Quote aggregate
-- Validates complete quote before saving
-- Generates unique reference number
-- Persists to database
+### Other operations
 
-**Pseudo-code:**
-```
-1. Validate userId and request
-2. Create new Quote(userId)
-3. If HomeQuote in request:
-   - Create HomeQuoteDetails from request
-   - Create HomeQuote entity
-   - Add to Quote via AddProductQuote()
-4. If AutoQuote in request:
-   - Create AutoQuoteDetails from request
-   - Create AutoQuote entity
-   - Add to Quote via AddProductQuote()
-5. If HealthQuote in request:
-   - Create HealthQuoteDetails from request
-   - Create HealthQuote entity
-   - Add to Quote via AddProductQuote()
-6. Call Quote.Validate() to ensure quote is valid
-7. Generate reference number (QT-YYYYMMDD-XXXXX)
-8. Call repository.AddAsync(quote)
-9. Return quote
-```
-
-#### AcceptQuoteAsync(Guid quoteId)
-- Retrieves quote by ID
-- Validates quote is not expired
-- Marks quote as Converted
-- Publishes QuoteAccepted event (future)
-- Persists changes to database
-- Returns updated quote
-
-**Future: Event Publishing**
-```
-QuoteAccepted event published to Azure Service Bus:
-{
-  "quoteId": "550e8400-e29b-41d4-a716-446655440000",
-  "userId": "660e8400-e29b-41d4-a716-446655440000",
-  "products": ["Home", "Auto"],
-  "totalPremium": 3750.50,
-  "timestamp": "2026-10-11T10:35:00Z"
-}
-
-Subscribers:
-- Policy Service: Creates Policy with same products and reference
-- Billing Service: Creates Invoice
-- Notification Service: Sends confirmation email
-```
-
-#### ExpireOldQuotesAsync()
-- Queries all expired quotes
-- Marks those not yet expired with Expired status
-- Batch updates database
-- Called by scheduled task
+- Accept loads the quote, checks expiry, sets its status ID using `QuoteStatus.Converted`, and saves it; it does not create a policy or publish events.
+- Cancel sets the status ID using `QuoteStatus.Expired` and saves it.
+- Expire-old selects quotes past their validity regardless of lifecycle state, then saves each whose status ID differs from `QuoteStatus.Expired` individually; this can include previously converted quotes. No scheduler is registered.
+- `QuoteStatus` and `QuoteStatusEnum` have different numeric meanings. The handlers use both, and response mapping uses obsolete `Status` rather than `StatusId`; do not assume the response status or lookup name reflects the lifecycle operation until this is reconciled.
 
 ---
 
 ## Implementation Notes
 
-### Current Status (Spec-Driven Development Phase)
+### Current Status
 
-✅ **Completed:**
-- Domain model design (Quote, ProductQuote hierarchy, Value Objects)
-- Database schema and EF Core configuration
-- Repository pattern implementation
-- Application service layer
-- REST API controller with all endpoints
-- Dependency injection setup
+**Implemented:**
+- Domain model, EF Core configuration and repository
+- CQRS handlers, REST controller and dependency injection
+- Configurable table-driven Auto and Home rating
 - JWT Bearer authentication (tokens issued by IdentityService)
-- Build compilation successful
 
-⏳ **In Progress:**
-- ServiceBusEventPublisher implemented (not yet registered in DI)
+**Not yet integrated:**
+- ServiceBusEventPublisher is implemented but not registered or invoked.
 
-📋 **Planned:**
+**Potential enhancements:**
 - Event publishing to Azure Service Bus
 - Unit tests for domain and service layer
 - Integration tests for API endpoints
@@ -904,11 +647,10 @@ Subscribers:
 
 1. **Value Object Storage**
    - **Decision**: Use owned types in EF Core (flatten to parent table)
-   - **Rationale**: Simpler schema, better performance, maintains DDD value object semantics
-   - **Note**: Currently exploring JSON serialization alternative if needed
+   - **Purpose**: Store product details with the derived product entity while retaining value-object semantics.
 
 2. **Premium Calculation**
-   - **Legacy**: Simplified calculations in domain entities when basic rating is disabled.
+   - **Legacy**: Auto and Home use simplified domain calculations when basic rating is disabled; Health always uses its domain calculation.
    - **Configured**: [Table-driven Auto and Home rating](#table-driven-rating).
    - **Operational requirement**: Supply and validate approved rating and risk data; the engine does not establish regulatory approval.
 
@@ -917,14 +659,13 @@ Subscribers:
    - **Rationale**: Human-readable, time-sortable, includes random component
 
 4. **Quote Validity Period**
-   - **Duration**: 30 days
-   - **Rationale**: Standard practice in insurance
-   - **Configurable**: Can be made environment-specific
+   - **Duration**: 30 days, hard-coded in the `Quote` constructor.
+   - **Configuration**: No current setting changes this duration.
 
 5. **Bundled Quotes**
    - **Design**: One Quote can contain multiple products
    - **Constraint**: Max one quote per product type per bundle
-   - **Rationale**: Supports bundle discounts, common in insurance
+   - **Current API**: Creates one product per quote; no bundle discounts are implemented.
 
 ---
 
@@ -934,7 +675,7 @@ Subscribers:
 
 `BasicRating:Enabled` controls Auto and Home rating in all environments; the checked-in setting is enabled. When disabled, Auto and Home use the existing hard-coded calculations; Health always uses its existing calculation. Apply EF migrations and supply independently approved rate plans, factors and postal-risk data before enabling the engine. There is no administration API; these tables must be maintained externally. Missing or ambiguous plans, risk records, factors or currencies cause an explicit error instead of falling back to legacy pricing. No new demonstration data is seeded by the current model.
 
-`ConfigureRatingJurisdiction` preserves existing rows, deactivates the two originally named sample plans, and initializes their new jurisdiction, currency and risk version fields to zero. Postal-risk jurisdiction fields are also initialized to zero. These old sample rates and risk levels are fabricated and remain in previously migrated databases for review, not for rating. Existing independently maintained rows likewise need their new fields populated before use. The original, uncommitted migration no longer inserts sample data on a fresh database; previously applied migrations are not rerun. The new migration does not delete potentially customized data. A rollback does not automatically republish the old plans.
+`ConfigureRatingJurisdiction` preserves existing rows, deactivates the two originally named sample plans, and initializes their new jurisdiction, currency and risk version fields to zero. Postal-risk jurisdiction fields are also initialized to zero. These old sample rates and risk levels are fabricated and remain in previously migrated databases for review, not for rating. Existing independently maintained rows likewise need their new fields populated before use. The original migration no longer inserts sample data on a fresh database; previously applied migrations are not rerun. The new migration does not delete potentially customized data. A rollback does not automatically republish the old plans.
 
 The prior conversion block was removed: any existing unexpired quote, including one previously calculated using sample data, can now be converted. Review or expire such quotes before enabling policy conversion. Existing premiums and snapshots are not automatically recalculated.
 
@@ -942,7 +683,7 @@ The prior conversion block was removed: any existing unexpired quote, including 
 
 - Each `RatingPlans` row is a versioned plan with product, LocationService country and province IDs, currency lookup ID, postal-risk dataset version, base rate, publication status, and half-open UTC effective dates. Exactly one published plan must match the product and jurisdiction. The plan is annual (12 months); Auto uses a fixed base and Home a percentage of home value. Currency must exist in the currency lookup and have two decimal places.
 - `RatingFactors` contains inclusive integer bands and multipliers. Auto applies vehicle type, accident count, ticket count, hail, theft and crash factors; Home applies hail, theft and fire. Exactly one positive multiplier must match each input. Decimal calculations round only the final amount to two decimals, midpoint away from zero.
-- `PostalRisks` is maintained separately, keyed by country, province, plan-selected dataset version and normalized exact postal code. `PostalCode` is `nvarchar(16)`; rating removes spaces and uppercases the quote's postal code, so stored risk codes must use the same normalized format (for example, `T3J0A1`, not `T3J 0A1`). Each record supplies hail, theft, fire and crash levels. Provide approved classifications for every supported postal code; there is no hard-coded postal-code whitelist.
+- `PostalRisks` is maintained separately, keyed by country, province, plan-selected dataset version and postal code. `PostalCode` is `nvarchar(16)`. Rating uppercases the quote's postal code but does not remove spaces; store codes in a matching format (for example, `T3J 0A1` must match `T3J 0A1`). Each record supplies hail, theft, fire and crash levels. Provide approved classifications for every supported postal code; there is no hard-coded postal-code whitelist.
 - Auto requests must provide `vehicleTypeId`, `atFaultAccidents` and `speedingTickets`; zero counts must be explicit. The vehicle type must match an applicable configured factor. Counts are aggregate totals for all drivers for the applicable plan's externally defined lookback period; the caller is responsible for aggregation and verification. There is no per-driver calculation, lookback enforcement or claim-history verification.
 - `ProductQuotes.RatingSnapshot` retains the plan, base, inputs, factors, intermediate amounts, jurisdiction, dataset version, currency and premium. Responses expose it as `rating`. Snapshot-bearing quotes may be converted. Historical snapshots with the earlier currency format remain readable.
 
@@ -952,9 +693,9 @@ The engine does not enforce immutable published plans or risk records, provide a
 
 `CreateQuoteCommandHandler` calls `IRatingEngine`; `BasicRatingEngine` separates the rating process into these steps:
 
-1. `GetRatingLocation` validates the product and, for Auto, requires a positive vehicle type and non-negative accident and ticket counts. It requires positive country and province IDs and a postal code, then removes spaces and uppercases the postal code.
+1. `GetRatingLocation` validates the product and, for Auto, requires a positive vehicle type and non-negative accident and ticket counts. It requires positive country and province IDs and a postal code, then uppercases the postal code without removing spaces.
 2. `GetEffectivePlanAsync` selects exactly one published plan for the product and jurisdiction at the current UTC time. Its start is inclusive and its end is exclusive. The base rate and risk dataset version must be positive; Home must use a percentage of home value and Auto a fixed base.
-3. `GetCurrencyAsync` requires an existing two-decimal currency. `GetPostalRiskAsync` requires an exact match for the normalized postal code, jurisdiction and the plan's risk dataset version.
+3. `GetCurrencyAsync` requires an existing two-decimal currency. `GetPostalRiskAsync` matches the uppercased postal code, jurisdiction and the plan's risk dataset version using database equality (subject to SQL collation); it does not strip spaces.
 4. `CalculateBasePremium` calculates the fixed Auto base or Home value multiplied by its base rate. `GetFactorInputs` assembles the ordered product and geographic inputs described above.
 5. `ApplyFactors` and `FindFactor` require exactly one matching inclusive band with a positive multiplier for each input. They multiply in order and retain each unrounded intermediate amount. The engine rounds only the final premium to two decimal places, midpoint away from zero.
 6. The result records the plan, location, risk dataset, currency, 12-month term, base, applied factors and premium. The aggregate stores the product premium and snapshot and recomputes the quote total.
@@ -1003,121 +744,51 @@ Disabled rating and Health return no table-driven result so that the existing ca
 
 ## Configuration
 
-### appsettings.json
-```json
-{
-  "ConnectionStrings": {
-	"DefaultConnection": "Server=.;Database=InsurancePortal.QuoteService;Trusted_Connection=true;"
-  },
-  "Logging": {
-	"LogLevel": {
-	  "Default": "Information",
-	  "Microsoft": "Warning"
-	}
-  },
-  "QuoteSettings": {
-	"ValidityDays": 30,
-	"ReferenceNumberPrefix": "QT"
-  },
-  "ServiceBus": {
-	"ConnectionString": "[Azure Service Bus Connection String]"
-  },
-  "Jwt": {
-	"Secret": "[Shared HMAC signing key, min. 32 characters]",
-	"Issuer": "InsurancePortal.IdentityService.Api",
-	"Audience": "InsurancePortal.QuoteService.Api"
-  }
-}
-```
+The API reads `ConnectionStrings:DefaultConnection`, `LocationService:BaseUrl`, `Jwt:Issuer`, `Jwt:Audience`, `Jwt:Secret`, and `BasicRating:Enabled`. Configure deployment-specific values and provide a secure signing key outside source control. The checked-in rating switch is enabled. Quote validity and reference prefix are hard-coded, not `QuoteSettings` options. The unused Service Bus publisher is not registered at startup.
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests
-- Domain entity validation (Quote, ProductQuote)
-- Value object equality and validation
-- Service layer business logic
-- Premium calculation logic
-
-### Integration Tests
-- Repository CRUD operations
-- Database migrations
-- EF Core configuration
-- Full API endpoint testing
-
-### E2E Tests
-- Complete quote creation to acceptance flow
-- Event publishing verification
-- Multi-product bundle scenarios
-- Error handling scenarios
+The repository contains xUnit tests, including `BasicRatingEngineTests`. The test project targets .NET 8, references .NET 10 projects and is not included in the solution; it needs modernization before it can run as the normal solution test suite. API integration, lifecycle status consistency, LocationService failure handling and rating configuration are important areas for further testing. Event publication and API bundle creation are not currently implemented and cannot be tested as existing flows.
 
 ---
 
 ## Deployment
 
 ### Development
-```bash
-dotnet build
-dotnet run --project InsurancePortal.QuoteService.API
+
+With the .NET 10 SDK and the appropriate SQL Server and LocationService configuration:
+
+```powershell
+dotnet build .\InsurancePortal.QuoteService.slnx
+dotnet run --project .\InsurancePortal.QuoteService.API\InsurancePortal.QuoteService.API.csproj
 ```
 
-### Database Setup
-```bash
-dotnet ef database update -p InsurancePortal.QuoteService.Infrastructure -s InsurancePortal.QuoteService.API
-```
+### Database setup
 
-### Docker
-```bash
-docker build -t insuranceportal.quoteservice:latest .
-docker run -p 5000:5000 insuranceportal.quoteservice:latest
-```
-
-### Azure Deployment
-- Push to Azure Container Registry
-- Deploy to Azure App Service or AKS
-- Configure managed identity for database access
-- Set up Key Vault for secrets
-- Configure Application Insights for monitoring
+The API calls `Database.Migrate()` on startup using its configured connection. EF CLI operations use `QuoteDbContextFactory`, whose design-time connection string is separate from the API configuration; check its target before running a database update. To generate or apply migrations, use the Infrastructure project and API startup project with a compatible `dotnet-ef` tool. Configure approved rating data independently as described above.
 
 ---
 
 ## Related Services
 
-- **User Service**: Provides authentication and user context
-- **Policy Service**: Consumes quote events to create policies
-- **Claims Service**: References policies created from quotes
-- **Billing Service**: Creates invoices from accepted quotes
-- **Notification Service**: Sends notifications for quote events
+- **IdentityService**: Issues JWTs validated by QuoteService.
+- **LocationService**: Creates and returns product address records over HTTP.
+- **Policy, Claims, Billing and Notification services**: Possible future integrations; no quote event is currently published to them.
 
 ---
 
 ## References
 
 - [Domain-Driven Design (DDD)](https://www.domainlanguage.com/ddd/)
-- [EF Core Table-Per-Hierarchy](https://docs.microsoft.com/en-us/ef/core/modeling/inheritance)
+- [EF Core inheritance mapping](https://learn.microsoft.com/en-us/ef/core/modeling/inheritance)
 - [Azure Service Bus Messaging](https://azure.microsoft.com/en-us/services/service-bus/)
 - [REST API Design Best Practices](https://restfulapi.net/)
 - [SOLID Principles](https://en.wikipedia.org/wiki/SOLID)
 
 ---
 
-## Document History
+## Document Scope
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-10-11 | Architecture Team | Initial specification (Spec-Driven Development) |
-
----
-
-## Contact & Questions
-
-For questions about this architecture, please refer to:
-- Architecture: [Team Email]
-- Implementation: [Dev Team Email]
-- DevOps: [DevOps Team Email]
-
----
-
-**Last Updated**: 2026-10-11
-**Status**: Spec-Driven Development Phase Complete
+This document consolidates the service architecture, current API and rating implementation. Source code and EF migrations remain authoritative for implementation details.
