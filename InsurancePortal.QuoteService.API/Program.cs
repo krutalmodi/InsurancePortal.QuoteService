@@ -4,11 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using InsurancePortal.QuoteService.Application.Abstractions.Cqrs;
 using InsurancePortal.QuoteService.Application.Clients;
+using InsurancePortal.QuoteService.Application.Lookups;
 using InsurancePortal.QuoteService.Application.Quotes.Commands;
 using InsurancePortal.QuoteService.Domain.Entities;
 using InsurancePortal.QuoteService.Application.Quotes.Queries;
 using InsurancePortal.QuoteService.Application.Repositories;
 using InsurancePortal.QuoteService.Application.Rating;
+using InsurancePortal.QuoteService.API.Validation;
 using InsurancePortal.QuoteService.Infrastructure.Services;
 using InsurancePortal.QuoteService.Infrastructure.Clients;
 using InsurancePortal.QuoteService.Infrastructure.Cqrs;
@@ -18,7 +20,7 @@ using InsurancePortal.QuoteService.Infrastructure.Repositories;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.ModelMetadataDetailsProviders.Add(new ProductQuoteValidationMetadataProvider()));
 builder.Services.AddOpenApi();
 
 var jwt = builder.Configuration.GetSection("Jwt");
@@ -68,9 +70,11 @@ builder.Services.AddScoped<ICommandHandler<ExpireOldQuotesCommand, Unit>, Expire
 builder.Services.AddScoped<IQueryHandler<GetQuoteByIdQuery, Quote?>, GetQuoteByIdQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetUserQuotesQuery, IEnumerable<Quote>>, GetUserQuotesQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetExpiredQuotesQuery, IEnumerable<Quote>>, GetExpiredQuotesQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetLookupsQuery, IReadOnlyList<LookupItem>>, GetLookupsQueryHandler>();
 
 // Register repositories and clients
 builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
+builder.Services.AddScoped<ILookupRepository, LookupRepository>();
 var basicRatingEnabled = builder.Configuration.GetValue<bool>("BasicRating:Enabled");
 builder.Services.AddSingleton(new BasicRatingOptions
 {

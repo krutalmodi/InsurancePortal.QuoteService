@@ -297,6 +297,9 @@ namespace InsurancePortal.QuoteService.API.Controllers
                             DrivingRecord = autoQuote.Details?.DrivingRecord,
                             NumberOfDrivers = autoQuote.Details?.NumberOfDrivers ?? 0,
                             EstimatedAnnualMileage = autoQuote.Details?.EstimatedAnnualMileage ?? 0,
+                            VehicleTypeId = autoQuote.VehicleTypeId,
+                            AtFaultAccidentCount = autoQuote.AtFaultAccidentCount,
+                            SpeedingTicketCount = autoQuote.SpeedingTicketCount,
                             QuotedPremium = autoQuote.QuotedPremium,
                             Rating = autoQuote.RatingSnapshot == null ? null : JsonSerializer.Deserialize<RatingResult>(autoQuote.RatingSnapshot),
                             ValidUntil = autoQuote.ValidUntil

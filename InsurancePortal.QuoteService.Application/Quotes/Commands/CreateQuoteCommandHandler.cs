@@ -86,16 +86,17 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
             {
                 case ProductType.Home:
                     {
-                        var location = await CreateLocationAsync(request.HomeQuote.Location, accessToken);
+                        var homeRequest = request.HomeQuote ?? throw new InvalidOperationException("HomeQuote details are required for Home product type");
+                        var location = await CreateLocationAsync(homeRequest.Location, accessToken);
 
                         var homeDetails = new HomeQuoteDetails(
-                            request.HomeQuote.SquareFootage,
-                            request.HomeQuote.YearBuilt,
-                            request.HomeQuote.HomeType,
-                            request.HomeQuote.HomeValue,
-                            request.HomeQuote.HasSecuritySystem,
-                            request.HomeQuote.HasFireAlarm,
-                            request.HomeQuote.NumberOfOccupants);
+                            homeRequest.SquareFootage,
+                            homeRequest.YearBuilt,
+                            homeRequest.HomeType,
+                            homeRequest.HomeValue,
+                            homeRequest.HasSecuritySystem,
+                            homeRequest.HasFireAlarm,
+                            homeRequest.NumberOfOccupants);
 
                         var homeQuote = new HomeQuote(homeDetails)
                         {
@@ -117,22 +118,26 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
                     }
                 case ProductType.Auto:
                     {
-                        var location = await CreateLocationAsync(request.AutoQuote.Location, accessToken);
+                        var autoRequest = request.AutoQuote ?? throw new InvalidOperationException("AutoQuote details are required for Auto product type");
+                        var location = await CreateLocationAsync(autoRequest.Location, accessToken);
 
                         var autoDetails = new AutoQuoteDetails(
-                            request.AutoQuote.VIN,
-                            request.AutoQuote.VehicleMakeId,
-                            request.AutoQuote.VehicleModelId,
-                            request.AutoQuote.Year,
-                            request.AutoQuote.VehicleColorId,
-                            request.AutoQuote.Mileage,
-                            request.AutoQuote.DrivingRecord,
-                            request.AutoQuote.NumberOfDrivers,
-                            request.AutoQuote.EstimatedAnnualMileage);
+                            autoRequest.VIN,
+                            autoRequest.VehicleMakeId,
+                            autoRequest.VehicleModelId,
+                            autoRequest.Year,
+                            autoRequest.VehicleColorId,
+                            autoRequest.Mileage,
+                            autoRequest.DrivingRecord,
+                            autoRequest.NumberOfDrivers,
+                            autoRequest.EstimatedAnnualMileage);
 
                         var autoQuote = new AutoQuote(autoDetails)
                         {
                             ProductTypeId = (int)ProductType.Auto,
+                            VehicleTypeId = autoRequest.VehicleTypeId,
+                            AtFaultAccidentCount = autoRequest.AtFaultAccidents,
+                            SpeedingTicketCount = autoRequest.SpeedingTickets,
                             LocationId = location.Id,
                             UnitNumber = location.UnitNumber,
                             StreetAddress1 = location.StreetAddress1,
@@ -145,23 +150,24 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
                             StatusId = (int)ProductQuoteStatusEnum.Pending,
                             CurrencyId = location.CountryId == 1 ? (int)CurrencyEnum.USD : (int)CurrencyEnum.CAD // Example logic for currency based on country
                         };
-                        var autoInput = request.AutoQuote.VehicleTypeId.HasValue && request.AutoQuote.AtFaultAccidents.HasValue && request.AutoQuote.SpeedingTickets.HasValue
-                            ? new AutoRatingInput(request.AutoQuote.VehicleTypeId.Value, request.AutoQuote.AtFaultAccidents.Value, request.AutoQuote.SpeedingTickets.Value)
+                        var autoInput = autoQuote.VehicleTypeId.HasValue && autoQuote.AtFaultAccidentCount.HasValue && autoQuote.SpeedingTicketCount.HasValue
+                            ? new AutoRatingInput(autoQuote.VehicleTypeId.Value, autoQuote.AtFaultAccidentCount.Value, autoQuote.SpeedingTicketCount.Value)
                             : null;
                         await AddRatedProductAsync(quote, autoQuote, autoInput);
                         break;
                     }
                 case ProductType.Health:
                     {
-                        var location = await CreateLocationAsync(request.HealthQuote.Location, accessToken);
+                        var healthRequest = request.HealthQuote ?? throw new InvalidOperationException("HealthQuote details are required for Health product type");
+                        var location = await CreateLocationAsync(healthRequest.Location, accessToken);
 
                         var healthDetails = new HealthQuoteDetails(
-                            request.HealthQuote.Age,
-                            request.HealthQuote.HealthStatus,
-                            request.HealthQuote.HasPreexistingConditions,
-                            request.HealthQuote.Smoker,
-                            request.HealthQuote.CoverageType,
-                            request.HealthQuote.Dependents);
+                            healthRequest.Age,
+                            healthRequest.HealthStatus,
+                            healthRequest.HasPreexistingConditions,
+                            healthRequest.Smoker,
+                            healthRequest.CoverageType,
+                            healthRequest.Dependents);
 
                         var healthQuote = new HealthQuote(healthDetails)
                         {

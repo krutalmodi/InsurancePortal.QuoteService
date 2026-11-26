@@ -35,6 +35,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data
         public DbSet<ProductQuoteStatusLookup> ProductQuoteStatusLookups { get; set; }
         public DbSet<QuotedByTypeLookup> QuotedByTypeLookups { get; set; }
         public DbSet<VehicleColorLookup> VehicleColorLookups { get; set; }
+        public DbSet<VehicleTypeLookup> VehicleTypeLookups { get; set; }
         public DbSet<DrivingRecordTypeLookup> DrivingRecordTypeLookups { get; set; }
         public DbSet<HomeTypeLookup> HomeTypeLookups { get; set; }
         public DbSet<HealthStatusLookup> HealthStatusLookups { get; set; }
@@ -67,6 +68,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data
             modelBuilder.ApplyConfiguration(new ProductQuoteStatusLookupConfiguration());
             modelBuilder.ApplyConfiguration(new QuotedByTypeLookupConfiguration());
             modelBuilder.ApplyConfiguration(new VehicleColorLookupConfiguration());
+            modelBuilder.ApplyConfiguration(new VehicleTypeLookupConfiguration());
             modelBuilder.ApplyConfiguration(new DrivingRecordTypeLookupConfiguration());
             modelBuilder.ApplyConfiguration(new HomeTypeLookupConfiguration());
             modelBuilder.ApplyConfiguration(new HealthStatusLookupConfiguration());

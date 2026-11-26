@@ -25,6 +25,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data.Seed
             modelBuilder.Entity<CurrencyLookup>().HasData(GetCurrencyLookups());
             modelBuilder.Entity<InsuranceProviderLookup>().HasData(GetInsuranceProviderLookups());
             modelBuilder.Entity<VehicleColorLookup>().HasData(GetVehicleColorLookups());
+            modelBuilder.Entity<VehicleTypeLookup>().HasData(GetVehicleTypeLookups());
             modelBuilder.Entity<DrivingRecordTypeLookup>().HasData(GetDrivingRecordTypeLookups());
             modelBuilder.Entity<HomeTypeLookup>().HasData(GetHomeTypeLookups());
             modelBuilder.Entity<HealthStatusLookup>().HasData(GetHealthStatusLookups());
@@ -133,6 +134,24 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data.Seed
                 new VehicleColorLookup { Id = 7, Code = "Green", Name = "Green", IsActive = true, SortOrder = 7, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
                 new VehicleColorLookup { Id = 8, Code = "Brown", Name = "Brown", IsActive = true, SortOrder = 8, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
                 new VehicleColorLookup { Id = 9, Code = "Gold", Name = "Gold", IsActive = true, SortOrder = 9, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" }
+            };
+        }
+
+        private static VehicleTypeLookup[] GetVehicleTypeLookups()
+        {
+            return new[]
+            {
+                new VehicleTypeLookup { Id = 1, Code = "Sedan", Name = "Sedan", IsActive = true, SortOrder = 1, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 2, Code = "SUV", Name = "SUV", IsActive = true, SortOrder = 2, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 3, Code = "PickupTruck", Name = "Pickup Truck", IsActive = true, SortOrder = 3, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 4, Code = "Hatchback", Name = "Hatchback", IsActive = true, SortOrder = 4, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 5, Code = "Coupe", Name = "Coupe", IsActive = true, SortOrder = 5, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 6, Code = "Convertible", Name = "Convertible", IsActive = true, SortOrder = 6, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 7, Code = "Wagon", Name = "Wagon", IsActive = true, SortOrder = 7, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 8, Code = "Minivan", Name = "Minivan", IsActive = true, SortOrder = 8, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 9, Code = "Van", Name = "Van", IsActive = true, SortOrder = 9, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 10, Code = "Motorcycle", Name = "Motorcycle", IsActive = true, SortOrder = 10, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" },
+                new VehicleTypeLookup { Id = 11, Code = "Other", Name = "Other", IsActive = true, SortOrder = 11, CreatedAt = SeedTimestamp, CreatedBy = "seed", UpdatedAt = SeedTimestamp, UpdatedBy = "seed" }
             };
         }
 

@@ -33,9 +33,10 @@
 
 ```text
 Client -> QuotesController -> CQRS dispatcher -> command/query handler
-												 |-> QuoteRepository -> SQL Server
-												 |-> BasicRatingEngine -> SQL Server
-												 `-> LocationClient -> LocationService
+												   |-> QuoteRepository -> SQL Server
+												   |-> BasicRatingEngine -> SQL Server
+												   `-> LocationClient -> LocationService
+Client -> LookupsController -> CQRS dispatcher -> lookup handler -> LookupRepository -> SQL Server
 ```
 
 ### Microservices Integration
@@ -261,10 +262,10 @@ PostalRisks: jurisdiction + dataset version + postal code
 
 ### Base route
 
-`/api/quotes` on the configured API host.
+`/api/quotes` on the configured API host. Public lookup reads use `/api/lookups/{type}`.
 
 ### Authentication
-All endpoints require JWT token in Authorization header:
+Quote endpoints require JWT token in Authorization header:
 ```
 Authorization: Bearer <jwt_token>
 ```
@@ -280,7 +281,7 @@ The controller parses the name identifier claim as a GUID for creation, generati
 ### Endpoints
 
 #### 1. Create Quote (POST /api/quotes)
-Creates one quote for the specified `productType` (Auto = 1, Home = 2, Health = 3). The corresponding product object and its `location` are required. The location IDs below are illustrative and must match the LocationService installation; the address and rating data must also exist in the relevant systems.
+Creates one quote for the specified `productType` (Auto = 1, Home = 2, Health = 3). The corresponding product object and its `location` are required. Other product objects may be omitted or null; if supplied, their nested model validation is skipped and the handler ignores them. JSON must still be syntactically valid and have compatible field types. The location IDs below are illustrative and must match the LocationService installation; the address and rating data must also exist in the relevant systems.
 
 ```json
 {
@@ -310,7 +311,7 @@ Creates one quote for the specified `productType` (Auto = 1, Home = 2, Health = 
 }
 ```
 
-On success the response is `201 Created` with `{ message, referenceNumber, quote }`. The quote contains its product, location snapshot, premium and, for table-rated Auto/Home, the rating breakdown. The handler sets `StatusId` to Draft, while the response currently reads the separate obsolete `Status` property; the response status must not be assumed to reflect `StatusId`.
+On success the response is `201 Created` with `{ message, referenceNumber, quote }`. The quote contains its product, location snapshot, premium and, for table-rated Auto/Home, the rating breakdown. Auto responses also contain `vehicleTypeId`, `atFaultAccidentCount` and `speedingTicketCount`. Request field names remain `vehicleTypeId`, `atFaultAccidents` and `speedingTickets`. The handler sets `StatusId` to Draft, while the response currently reads the separate obsolete `Status` property; the response status must not be assumed to reflect `StatusId`.
 
 **Error Responses:**
 - `400 Bad Request`: Invalid input data
@@ -409,6 +410,21 @@ POST /api/quotes/expire-old
 
 The endpoint is available for an external scheduler, but no scheduler is implemented or registered here.
 
+### Public lookup API
+
+`GET /api/lookups/{type}` requires no JWT and returns an array of active entries ordered by `sortOrder`, `name`, then `id`. Supported types are:
+
+- `quote-statuses`, `product-types`, `product-quote-statuses`, `quoted-by-types`
+- `vehicle-makes`, `vehicle-models`, `vehicle-types`, `vehicle-colors`, `driving-record-types`
+- `home-types`, `health-statuses`, `coverage-types`, `smoking-statuses`
+- `currencies`, `insurance-providers`
+
+`vehicle-types` seeds stable integer IDs: 1 Sedan, 2 SUV, 3 Pickup Truck, 4 Hatchback, 5 Coupe, 6 Convertible, 7 Wagon, 8 Minivan, 9 Van, 10 Motorcycle, and 11 Other. These are dropdown categories, not an underwriting approval or a guarantee that every category is covered by a rate plan. Existing plans use integer `VehicleType` factor bands; review and align their meanings and configured factors with these IDs before using them. The rating engine currently checks factors rather than validating the selected ID against this lookup.
+
+Each entry contains `id`, `code`, `name`, `description`, `isActive`, and `sortOrder`. Vehicle models also include `vehicleMakeId`; currencies include `isoCode` and `decimalPlaces`. Fields not applicable to a type are null. Use `?vehicleMakeId=1` on `vehicle-models` to filter by a positive make ID, and `?includeInactive=true` on any type to include historical inactive entries. Unknown types return 404; invalid or inapplicable make filters return 400. Database failures return 500 and are logged. This read-only API exposes QuoteService lookup tables, not LocationService country, province, or location-type tables, nor rating plans or postal risk data.
+
+The quote and product status lookup values have the lifecycle caveats described above; exposing them does not resolve the existing enum/lookup mismatch.
+
 ---
 
 ## CQRS Architecture
@@ -441,6 +457,7 @@ No third-party mediator package is used. A missing handler registration throws `
 | `GetQuoteByIdQuery(QuoteId)` | `Quote?` | `GetQuoteByIdQueryHandler` | GET /api/quotes/{id} |
 | `GetUserQuotesQuery(UserId)` | `IEnumerable<Quote>` | `GetUserQuotesQueryHandler` | GET /api/quotes/user/{userId} |
 | `GetExpiredQuotesQuery()` | `IEnumerable<Quote>` | `GetExpiredQuotesQueryHandler` | GET /api/quotes/expired |
+| `GetLookupsQuery(Type, IncludeInactive, VehicleMakeId)` | `IReadOnlyList<LookupItem>` | `GetLookupsQueryHandler` | GET /api/lookups/{type} |
 
 ### Registration
 
@@ -506,7 +523,8 @@ InsurancePortal.QuoteService/
 │
 ├── InsurancePortal.QuoteService.API/
 │   ├── Controllers/
-│   │   └── QuotesController.cs         ([Authorize] REST endpoints under api/quotes)
+│   │   ├── QuotesController.cs         ([Authorize] REST endpoints under api/quotes)
+│   │   └── LookupsController.cs        (Public read-only lookup endpoint)
 │   ├── Properties/
 │   │   └── launchSettings.json
 │   ├── appsettings.json                (Configuration, Jwt settings)
@@ -592,7 +610,8 @@ InsurancePortal.QuoteService/
     │   └── ServiceBusEventPublisher.cs (Azure Service Bus publisher)
     ├── Migrations/                     (Initial schema, vehicle lookups, rating and postal-code changes)
     ├── Repositories/
-    │   └── QuoteRepository.cs          (Implementation)
+    │   ├── QuoteRepository.cs
+    │   └── LookupRepository.cs         (Read-only dropdown values)
     ├── Services/
     │   └── BasicRatingEngine.cs         (Configured Auto and Home rating)
     └── QuoteService.md                 (This file)
@@ -684,7 +703,7 @@ The prior conversion block was removed: any existing unexpired quote, including 
 - Each `RatingPlans` row is a versioned plan with product, LocationService country and province IDs, currency lookup ID, postal-risk dataset version, base rate, publication status, and half-open UTC effective dates. Exactly one published plan must match the product and jurisdiction. The plan is annual (12 months); Auto uses a fixed base and Home a percentage of home value. Currency must exist in the currency lookup and have two decimal places.
 - `RatingFactors` contains inclusive integer bands and multipliers. Auto applies vehicle type, accident count, ticket count, hail, theft and crash factors; Home applies hail, theft and fire. Exactly one positive multiplier must match each input. Decimal calculations round only the final amount to two decimals, midpoint away from zero.
 - `PostalRisks` is maintained separately, keyed by country, province, plan-selected dataset version and postal code. `PostalCode` is `nvarchar(16)`. Rating uppercases the quote's postal code but does not remove spaces; store codes in a matching format (for example, `T3J 0A1` must match `T3J 0A1`). Each record supplies hail, theft, fire and crash levels. Provide approved classifications for every supported postal code; there is no hard-coded postal-code whitelist.
-- Auto requests must provide `vehicleTypeId`, `atFaultAccidents` and `speedingTickets`; zero counts must be explicit. The vehicle type must match an applicable configured factor. Counts are aggregate totals for all drivers for the applicable plan's externally defined lookback period; the caller is responsible for aggregation and verification. There is no per-driver calculation, lookback enforcement or claim-history verification.
+- With basic rating enabled, Auto requests must provide `vehicleTypeId`, `atFaultAccidents` and `speedingTickets`; zero counts must be explicit. The vehicle type must match an applicable configured factor. The three inputs are persisted in nullable `AutoQuotes.VehicleTypeId`, `AtFaultAccidentCount` and `SpeedingTicketCount` columns and used to build the rating input. Historical rows and omitted fields remain null rather than implying zero; no historical snapshot backfill is performed. When rating is disabled, fields remain optional, but supplied IDs must be positive and counts non-negative. Counts are aggregate totals for all drivers for the applicable plan's externally defined lookback period; the caller is responsible for aggregation and verification. `speedingTickets` counts speeding tickets, not all traffic violations. There is no per-driver calculation, lookback enforcement or claim-history verification. `VehicleTypeId` has no lookup foreign key, preserving compatibility with existing plan-defined IDs; see the lookup API section before aligning plan factors.
 - `ProductQuotes.RatingSnapshot` retains the plan, base, inputs, factors, intermediate amounts, jurisdiction, dataset version, currency and premium. Responses expose it as `rating`. Snapshot-bearing quotes may be converted. Historical snapshots with the earlier currency format remain readable.
 
 The engine does not enforce immutable published plans or risk records, provide an approval workflow, support fixed adjustments or coverage-level rates, validate geographic data against an authoritative source, or provide bundle discounts. The feature switch and the older Auto/Home/Health calculations are not a substitute for approved production rates. Existing Auto mileage and Home security/age adjustments are not part of this table-driven calculation.

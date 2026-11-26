@@ -40,6 +40,12 @@ namespace InsurancePortal.QuoteService.Domain.Entities
 
         public int? CountryId { get; set; }
 
+        public int? VehicleTypeId { get; set; }
+
+        public int? AtFaultAccidentCount { get; set; }
+
+        public int? SpeedingTicketCount { get; set; }
+
         public AutoQuoteDetails? Details { get; set; }
 
         public override ProductType ProductType => ProductType.Auto;
@@ -54,6 +60,9 @@ namespace InsurancePortal.QuoteService.Domain.Entities
 
             if (Details.NumberOfDrivers <= 0)
                 throw new InvalidOperationException("At least one driver is required");
+
+            if (VehicleTypeId is <= 0 || AtFaultAccidentCount is < 0 || SpeedingTicketCount is < 0)
+                throw new InvalidOperationException("Vehicle type must be positive and accident and speeding ticket counts cannot be negative");
         }
 
         public override decimal CalculatePremium()

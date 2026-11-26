@@ -1679,6 +1679,189 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("InsurancePortal.QuoteService.Domain.Entities.Lookups.VehicleTypeLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("VehicleTypeLookups", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "Sedan",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Sedan",
+                            SortOrder = 1,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "SUV",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "SUV",
+                            SortOrder = 2,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "PickupTruck",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Pickup Truck",
+                            SortOrder = 3,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Code = "Hatchback",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Hatchback",
+                            SortOrder = 4,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Code = "Coupe",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Coupe",
+                            SortOrder = 5,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Code = "Convertible",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Convertible",
+                            SortOrder = 6,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "Wagon",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Wagon",
+                            SortOrder = 7,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Code = "Minivan",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Minivan",
+                            SortOrder = 8,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Code = "Van",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Van",
+                            SortOrder = 9,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Code = "Motorcycle",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Motorcycle",
+                            SortOrder = 10,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Code = "Other",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            IsActive = true,
+                            Name = "Other",
+                            SortOrder = 11,
+                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "seed"
+                        });
+                });
+
             modelBuilder.Entity("InsurancePortal.QuoteService.Domain.Entities.PostalRisk", b =>
                 {
                     b.Property<int>("Id")
@@ -1963,6 +2146,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                 {
                     b.HasBaseType("InsurancePortal.QuoteService.Domain.Entities.ProductQuote");
 
+                    b.Property<int?>("AtFaultAccidentCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("City")
                         .HasColumnType("nvarchar(max)");
 
@@ -1978,6 +2164,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                     b.Property<int?>("ProvinceId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("SpeedingTicketCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("StreetAddress1")
                         .HasColumnType("nvarchar(max)");
 
@@ -1986,6 +2175,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
 
                     b.Property<string>("UnitNumber")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("VehicleTypeId")
+                        .HasColumnType("int");
 
                     b.ToTable("AutoQuotes", (string)null);
                 });

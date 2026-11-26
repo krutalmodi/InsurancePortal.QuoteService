@@ -16,16 +16,16 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Requests
         /// <summary>
         /// Home insurance quote details (required if ProductType is Home)
         /// </summary>
-        public CreateHomeQuoteRequest HomeQuote { get; set; }
+        public CreateHomeQuoteRequest? HomeQuote { get; set; }
 
         /// <summary>
         /// Auto insurance quote details (required if ProductType is Auto)
         /// </summary>
-        public CreateAutoQuoteRequest AutoQuote { get; set; }
+        public CreateAutoQuoteRequest? AutoQuote { get; set; }
 
         /// <summary>
         /// Health insurance quote details (required if ProductType is Health)
         /// </summary>
-        public CreateHealthQuoteRequest HealthQuote { get; set; }
+        public CreateHealthQuoteRequest? HealthQuote { get; set; }
     }
 }
