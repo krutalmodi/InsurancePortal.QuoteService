@@ -149,7 +149,7 @@ namespace InsurancePortal.QuoteService.Tests.UnitTests.Rating
             Assert.Equal(savedProduct.QuotedPremium, snapshot!.Premium);
             Assert.Equal(6, snapshot.Factors.Count);
             saved.MarkAsConverted();
-            Assert.Equal((int)QuoteStatus.Converted, saved.StatusId);
+            Assert.Equal((int)QuoteStatusEnum.Converted, saved.StatusId);
         }
 
         [Fact]

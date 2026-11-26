@@ -43,7 +43,7 @@ Client -> LookupsController -> CQRS dispatcher -> lookup handler -> LookupReposi
 
 - **Identity Service**: issues JWTs validated by the API using configured issuer, audience and signing key.
 - **LocationService**: creates an address for each product quote through an HTTP client; the returned address is also snapshotted on the product quote. Location creation and quote persistence are separate operations, not a distributed transaction.
-- **Policy, Billing and Notification services**: prospective consumers; current quote handlers do not publish events. A Service Bus publisher exists but is not registered or invoked.
+- **Policy Service**: the accept endpoint requests issuance synchronously after saving acceptance. Billing and Notification integrations are prospective; current quote handlers do not publish events. A Service Bus publisher exists but is not registered or invoked.
 
 ---
 
@@ -63,7 +63,7 @@ Represents a complete quote request that can contain multiple product quotes.
 **Properties:**
 - `Id`: Unique identifier (GUID)
 - `UserId`: External user identifier (GUID), not a database foreign key
-- `StatusId`: Integer reference to `QuoteStatusLookups`; the obsolete `Status` property is also mapped
+- `StatusId`: Integer reference to `QuoteStatusLookups`; the sole persisted quote status
 - `CreatedAt`: Timestamp of quote creation
 - `ValidUntil`: Expiration date, set to 30 days from creation (`DateTime.UtcNow.AddDays(30)`)
 - `TotalPremium`: Sum of all product premiums
@@ -75,6 +75,7 @@ Represents a complete quote request that can contain multiple product quotes.
 void AddProductQuote(ProductQuote productQuote, decimal? calculatedPremium = null)
 void RemoveProductQuote(ProductType productType)
 void Validate()
+void MarkAsAccepted()                     // Set accepted status ID
 void MarkAsConverted()                    // Set converted status ID; no policy is created
 void MarkAsExpired()
 bool IsExpired { get; }
@@ -83,8 +84,8 @@ bool IsExpired { get; }
 **Business Rules:**
 - A quote must contain at least one product quote
 - Only one quote per product type per quote bundle
-- All quotes are valid for 30 days from creation only; after that they are treated as expired and cannot be accepted
-- Quote is automatically invalid if expired
+- Open quotes are valid for 30 days from creation and cannot be newly accepted after expiry
+- Accepted or Converted quotes cannot be accepted again
 - Premium is automatically calculated and summed
 
 #### 2. **ProductQuote (Abstract Base Class)**
@@ -215,9 +216,9 @@ public class HealthQuoteDetails
 
 ### Enumerations
 
-**Quote status enums**
+**Quote status enum**
 
-`QuoteStatus` has `Active = 1`, `Expired = 2`, `Converted = 3`, and `Rejected = 4`. The separate `QuoteStatusEnum` defines `Draft = 1`, `Submitted = 2`, `InProgress = 3`, `Quoted = 4`, `Accepted = 5`, `Rejected = 6`, `Expired = 7`, and `Cancelled = 8`. Creation uses the latter; `MarkAsConverted` and `MarkAsExpired` use the former. Their numeric meanings conflict, and the response maps the obsolete `Status` property rather than `StatusId`. Conversion does not create a policy.
+`QuoteStatusEnum` matches the seeded lookup IDs: Draft = 1, Submitted = 2, InProgress = 3, Quoted = 4, Expired = 5, Accepted = 6, Converted = 7, and Declined = 8. The API returns both `statusId` and the corresponding lookup `status` code. Acceptance stores Accepted before requesting policy issuance; it does not mark the quote Converted after issuance.
 
 **ProductType**
 - `Auto`: Auto insurance (value = 1)
@@ -239,13 +240,17 @@ The EF configurations and migrations in `InsurancePortal.QuoteService.Infrastruc
 
 | Table | Key details |
 |-------|-------------|
-| `Quotes` | GUID ID and external `UserId`; integer `StatusId`; unique required `ReferenceNumber`; validity, audit fields and `TotalPremium` (`decimal(18,2)`). The obsolete `Status` enum is also mapped. |
+| `Quotes` | GUID ID and external `UserId`; integer `StatusId`; unique required `ReferenceNumber`; validity, audit fields and `TotalPremium` (`decimal(18,2)`). |
 | `ProductQuotes` | GUID ID and `QuoteId` FK; product, status, currency, provider and quoted-by lookup IDs; premium, validity and optional JSON `RatingSnapshot`. Deleting a parent quote with product rows is restricted. |
-| `HomeQuotes`, `AutoQuotes`, `HealthQuotes` | Derived TPT tables share the base ID and store their respective owned details and address snapshots. `LocationId` is an external LocationService ID, not a local database FK. Auto make, model and color use integer lookup IDs. |
-| Lookup tables | Integer IDs, explicitly seeded; vehicle models reference makes. See `QuoteDbContext` and its configurations for the current set and relationships. |
+| `HomeQuotes`, `AutoQuotes`, `HealthQuotes` | Derived TPT tables share the base ID and store their respective owned details and address snapshots, including nullable integer `LocationTypeId`. `LocationId` is an external LocationService ID, not a local database FK. Auto make, model and color use integer lookup IDs. |
+| Lookup tables | Integer IDs, explicitly seeded; vehicle models reference makes. `CreatedAt` and `CreatedBy` describe creation; `UpdatedAt` and `UpdatedBy` are nullable until an update occurs. See `QuoteDbContext` and its configurations for the current set and relationships. |
 | `RatingPlans`, `RatingFactors`, `PostalRisks` | Configuration for the [rating engine](#table-driven-rating); the postal code column is `nvarchar(16)`. |
 
 `(QuoteId, ProductTypeId)` has a non-unique index; the aggregate enforces one product per type, not a database unique constraint. `ProductQuotes.StatusId` is currently configured as a foreign key to `QuoteStatusLookups`, although product status values and comments refer to `ProductQuoteStatusLookups`.
+
+The `RemoveQuoteStatus` migration drops the obsolete `Quotes.Status` column and retains `StatusId` unchanged. Back up the database and review existing status IDs before applying it: older acceptance wrote 3 (also the lookup ID for InProgress), and cancellation/expiration wrote 2 (also Submitted). Those values are ambiguous and cannot be safely repaired automatically; reconcile affected quotes using policy and audit records. Rolling back recreates `Status` with zero, not its former values.
+
+The `NullableLookupUpdateAudit` migration makes lookup `UpdatedAt` nullable and clears the original seed update markers only when the original seed ID, creator and timestamps still match. Genuine changes with different audit markers are preserved; modifications that reused the original seed markers cannot be distinguished. On rollback, missing update timestamps are replaced with the creation timestamp because the old schema requires a value.
 
 ```text
 Quotes (1) ---< ProductQuotes
@@ -276,7 +281,7 @@ Authorization: Bearer <jwt_token>
 - **Validation**: Issuer, audience, signing key, and lifetime are validated; clock skew is not explicitly configured.
 - **Pipeline**: `UseAuthentication()` runs before `UseAuthorization()`; `QuotesController` is protected with `[Authorize]`.
 
-The controller parses the name identifier claim as a GUID for creation, generating an ID when the claim is absent. A present non-GUID claim produces a server error. This fallback does not allow unauthenticated access. There are no per-resource ownership, role or permission checks in this controller; `GET /user/{userId}` accepts the user ID from the route.
+The controller parses the name identifier claim as a GUID for creation, generating an ID when the claim is absent. A present non-GUID claim produces a server error. This fallback does not allow unauthenticated access, and quotes created with a generated ID cannot be retrieved by the current-user endpoint unless a later token contains that ID. `GET /user` requires a non-empty GUID name identifier and filters by it; acceptance checks ownership. Other quote endpoints do not implement per-resource ownership, role or permission checks.
 
 ### Endpoints
 
@@ -311,7 +316,7 @@ Creates one quote for the specified `productType` (Auto = 1, Home = 2, Health = 
 }
 ```
 
-On success the response is `201 Created` with `{ message, referenceNumber, quote }`. The quote contains its product, location snapshot, premium and, for table-rated Auto/Home, the rating breakdown. Auto responses also contain `vehicleTypeId`, `atFaultAccidentCount` and `speedingTicketCount`. Request field names remain `vehicleTypeId`, `atFaultAccidents` and `speedingTickets`. The handler sets `StatusId` to Draft, while the response currently reads the separate obsolete `Status` property; the response status must not be assumed to reflect `StatusId`.
+On success the response is `201 Created` with `{ message, referenceNumber, quote }`. The quote contains its product, location snapshot, premium and, for table-rated Auto/Home, the rating breakdown. Location `locationTypeId` is an integer from LocationService; existing snapshots predating the type ID migration return null because the original value was not stored. Location IDs remain GUIDs. Auto responses also contain `vehicleTypeId`, `atFaultAccidentCount` and `speedingTicketCount`. Request field names remain `vehicleTypeId`, `atFaultAccidents` and `speedingTickets`. The handler sets `statusId` to Draft (1), and `status` is the corresponding lookup code.
 
 **Error Responses:**
 - `400 Bad Request`: Invalid input data
@@ -328,7 +333,7 @@ Retrieve a specific quote with all product details.
 GET /api/quotes/550e8400-e29b-41d4-a716-446655440000
 ```
 
-**Response (200 OK):** A `QuoteResponse` with product details and, when available, the stored rating breakdown. The response status caveat described above also applies.
+**Response (200 OK):** A `QuoteResponse` with product details, `statusId`, its lookup `status` code and, when available, the stored rating breakdown.
 
 **Error Responses:**
 - `404 Not Found`: Quote does not exist
@@ -336,48 +341,53 @@ GET /api/quotes/550e8400-e29b-41d4-a716-446655440000
 
 ---
 
-#### 3. Get User Quotes (GET /api/quotes/user/{userId})
-Retrieve all quotes for a specific user.
+#### 3. Get User Quotes (GET /api/quotes/user)
+Retrieve quotes for the authenticated user. The user ID comes only from the JWT name identifier claim, not the route or query string. The former `/api/quotes/user/{userId}` route has been removed; clients must update their URL.
 
 **Request:**
 ```http
-GET /api/quotes/user/660e8400-e29b-41d4-a716-446655440000
+GET /api/quotes/user
 ```
 
-**Response (200 OK):** An array of `QuoteResponse` objects.
+**Response (200 OK):** An array of `QuoteResponse` objects, empty if the user has no quotes. A missing, invalid or empty GUID name identifier produces `401 Unauthorized`; no user ID is generated for this endpoint.
 
 ---
 
 #### 4. Accept Quote (POST /api/quotes/{id}/accept)
-Marks a non-expired quote as converted and persists it. The handler does not create a policy or publish an event.
+Marks an eligible, non-expired quote as Accepted and persists it, then synchronously requests policy issuance from Policy Service. Accepted and Converted quotes cannot be accepted again. An optimistic status concurrency check ensures concurrent requests do not both initiate issuance.
 
 **Request:**
 ```http
 POST /api/quotes/550e8400-e29b-41d4-a716-446655440000/accept
 ```
 
-**Response (200 OK):** The updated `QuoteResponse`; its `status` is mapped from the obsolete `Status` property, not `StatusId`.
+**Response (200 OK):** The updated `QuoteResponse`, including `statusId`, the corresponding lookup `status` code, and `policyId` and `policyNumber` from Policy Service.
 
 **Side Effects:**
-- The domain updates `StatusId` to `(int)QuoteStatus.Converted` and persists the quote.
-- No downstream events are published by this handler.
+- The domain updates `StatusId` to `(int)QuoteStatusEnum.Accepted` (6) and persists the quote before calling Policy Service.
+- Product type, quoted premium, and ISO currency are sent to the internal issuance endpoint, authenticated with `X-PolicyService-Key`.
+- This interim synchronous integration does not publish an event or wait for payment.
 
 **Error Responses:**
-- `400 Bad Request`: Quote is expired
+- `400 Bad Request`: Quote is expired or declined
+- `409 Conflict`: Quote is already Accepted or Converted, or its status changed concurrently
+- `500 Internal Server Error`: A post-acceptance operation failed; the response indicates when reconciliation is needed
+- `502 Bad Gateway`: Quote was accepted but Policy Service issuance failed; contact support to reconcile issuance rather than retrying acceptance
 - `404 Not Found`: Quote does not exist
-- `401 Unauthorized`: Missing/invalid JWT token
+- `401 Unauthorized`: Missing/invalid JWT token or user identifier
+- `403 Forbidden`: Quote is not owned by the authenticated user
 
 ---
 
 #### 5. Cancel Quote (POST /api/quotes/{id}/cancel)
-Cancel a quote and mark it as expired.
+Cancel a quote and mark it as expired. Accepted or converted quotes cannot be cancelled by this endpoint.
 
 **Request:**
 ```http
 POST /api/quotes/550e8400-e29b-41d4-a716-446655440000/cancel
 ```
 
-**Response (200 OK):** The updated `QuoteResponse`; the response status caveat applies.
+**Response (200 OK):** The updated `QuoteResponse`. Accepted or converted quotes return `400 Bad Request`.
 
 ---
 
@@ -394,7 +404,7 @@ GET /api/quotes/expired
 ---
 
 #### 7. Expire Old Quotes (POST /api/quotes/expire-old)
-Marks old quotes as expired; the controller does not enforce an admin role.
+Marks past-validity Draft, Submitted, InProgress and Quoted quotes as expired, leaving Accepted, Converted and Declined quotes unchanged; the controller does not enforce an admin role.
 
 **Request:**
 ```http
@@ -455,7 +465,7 @@ No third-party mediator package is used. A missing handler registration throws `
 | Query | Result | Handler | Endpoint |
 |-------|--------|---------|----------|
 | `GetQuoteByIdQuery(QuoteId)` | `Quote?` | `GetQuoteByIdQueryHandler` | GET /api/quotes/{id} |
-| `GetUserQuotesQuery(UserId)` | `IEnumerable<Quote>` | `GetUserQuotesQueryHandler` | GET /api/quotes/user/{userId} |
+| `GetUserQuotesQuery(UserId)` | `IEnumerable<Quote>` | `GetUserQuotesQueryHandler` | GET /api/quotes/user (ID from token) |
 | `GetExpiredQuotesQuery()` | `IEnumerable<Quote>` | `GetExpiredQuotesQueryHandler` | GET /api/quotes/expired |
 | `GetLookupsQuery(Type, IncludeInactive, VehicleMakeId)` | `IReadOnlyList<LookupItem>` | `GetLookupsQueryHandler` | GET /api/lookups/{type} |
 
@@ -632,10 +642,10 @@ The use cases are implemented by CQRS handlers rather than a `QuoteService` clas
 
 ### Other operations
 
-- Accept loads the quote, checks expiry, sets its status ID using `QuoteStatus.Converted`, and saves it; it does not create a policy or publish events.
-- Cancel sets the status ID using `QuoteStatus.Expired` and saves it.
-- Expire-old selects quotes past their validity regardless of lifecycle state, then saves each whose status ID differs from `QuoteStatus.Expired` individually; this can include previously converted quotes. No scheduler is registered.
-- `QuoteStatus` and `QuoteStatusEnum` have different numeric meanings. The handlers use both, and response mapping uses obsolete `Status` rather than `StatusId`; do not assume the response status or lookup name reflects the lifecycle operation until this is reconciled.
+- Accept checks ownership, status and expiry, atomically persists `QuoteStatusEnum.Accepted` using `StatusId` as an optimistic concurrency token, then the controller requests policy issuance. Accepted or Converted quotes cannot be accepted again; no event is published. If issuance fails after acceptance, operational reconciliation is required because the two services do not share a transaction.
+- Cancel sets `QuoteStatusEnum.Expired` unless the quote is Accepted or Converted.
+- Expire-old selects quotes past their validity and saves only those in an open status. No scheduler is registered.
+- Responses resolve the status code from `QuoteStatusLookups` using `StatusId`.
 
 ---
 
@@ -754,7 +764,7 @@ Disabled rating and Health return no table-driven result so that the existing ca
 - [ ] Audit logging for compliance
 
 ### Phase 6: Policy Integration
-- [ ] Automatic policy creation from accepted quote
+- [x] Automatic policy creation from accepted quote (interim synchronous call to Policy Service)
 - [ ] Same policy number if products are bundled
 - [ ] Premium alignment between quote and policy
 - [ ] Automatic renewal quote generation
@@ -763,7 +773,7 @@ Disabled rating and Health return no table-driven result so that the existing ca
 
 ## Configuration
 
-The API reads `ConnectionStrings:DefaultConnection`, `LocationService:BaseUrl`, `Jwt:Issuer`, `Jwt:Audience`, `Jwt:Secret`, and `BasicRating:Enabled`. Configure deployment-specific values and provide a secure signing key outside source control. The checked-in rating switch is enabled. Quote validity and reference prefix are hard-coded, not `QuoteSettings` options. The unused Service Bus publisher is not registered at startup.
+The API reads `ConnectionStrings:DefaultConnection`, `LocationService:BaseUrl`, `PolicyService:BaseUrl`, `PolicyService:ApiKey`, `Jwt:Issuer`, `Jwt:Audience`, `Jwt:Secret`, and `BasicRating:Enabled`. `PolicyService:ApiKey` must match Policy Service's `ServiceAuthentication:ApiKey`; store both outside source control. Configure deployment-specific values and provide a secure signing key outside source control. The checked-in rating switch is enabled. Quote validity and reference prefix are hard-coded, not `QuoteSettings` options. The unused Service Bus publisher is not registered at startup.
 
 ---
 

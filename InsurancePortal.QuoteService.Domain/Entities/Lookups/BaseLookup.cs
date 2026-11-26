@@ -46,7 +46,7 @@ namespace InsurancePortal.QuoteService.Domain.Entities.Lookups
         /// <summary>
         /// Audit: When last updated
         /// </summary>
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
 
         /// <summary>
         /// Audit: Who/what last updated this record

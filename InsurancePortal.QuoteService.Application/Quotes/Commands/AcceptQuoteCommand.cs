@@ -4,7 +4,7 @@ using InsurancePortal.QuoteService.Domain.Entities;
 namespace InsurancePortal.QuoteService.Application.Quotes.Commands
 {
     /// <summary>
-    /// Command to accept a quote and convert it to a policy
+    /// Command to accept a quote before requesting policy issuance
     /// </summary>
-    public record AcceptQuoteCommand(Guid QuoteId) : ICommand<Quote?>;
+    public record AcceptQuoteCommand(Guid QuoteId, Guid CustomerId) : ICommand<Quote?>;
 }

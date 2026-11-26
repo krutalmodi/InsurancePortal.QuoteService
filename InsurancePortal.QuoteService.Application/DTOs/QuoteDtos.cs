@@ -255,7 +255,7 @@ namespace InsurancePortal.QuoteService.Application.Dtos
     public class LocationDto
     {
         public Guid? Id { get; set; }
-        public Guid LocationTypeId { get; set; }
+        public int LocationTypeId { get; set; }
         public string LocationTypeName { get; set; }
         public string UnitNumber { get; set; }
         public string StreetAddress1 { get; set; }

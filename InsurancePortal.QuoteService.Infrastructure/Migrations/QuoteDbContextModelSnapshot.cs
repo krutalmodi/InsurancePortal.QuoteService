@@ -57,7 +57,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -80,9 +80,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Basic coverage",
                             IsActive = true,
                             Name = "Basic",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -93,9 +91,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Standard coverage",
                             IsActive = true,
                             Name = "Standard",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -106,9 +102,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Premium coverage",
                             IsActive = true,
                             Name = "Premium",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         });
                 });
 
@@ -157,7 +151,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -184,9 +178,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             IsActive = true,
                             IsoCode = "USD",
                             Name = "US Dollar",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -198,9 +190,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             IsActive = true,
                             IsoCode = "CAD",
                             Name = "Canadian Dollar",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         });
                 });
 
@@ -239,7 +229,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -262,9 +252,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "No violations",
                             IsActive = true,
                             Name = "Clean",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -275,9 +263,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Minor traffic violation",
                             IsActive = true,
                             Name = "Minor Violation",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -288,9 +274,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Major traffic violation",
                             IsActive = true,
                             Name = "Major Violation",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         },
                         new
                         {
@@ -301,9 +285,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "At-fault accident",
                             IsActive = true,
                             Name = "Accident",
-                            SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 4
                         },
                         new
                         {
@@ -314,9 +296,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Driving under influence",
                             IsActive = true,
                             Name = "DUI",
-                            SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 5
                         },
                         new
                         {
@@ -327,9 +307,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "License suspended",
                             IsActive = true,
                             Name = "Suspension",
-                            SortOrder = 6,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 6
                         },
                         new
                         {
@@ -340,9 +318,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Multiple violations",
                             IsActive = true,
                             Name = "Multiple Violations",
-                            SortOrder = 7,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 7
                         });
                 });
 
@@ -381,7 +357,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -403,9 +379,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Excellent",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -415,9 +389,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Good",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -427,9 +399,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Fair",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         },
                         new
                         {
@@ -439,9 +409,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Poor",
-                            SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 4
                         },
                         new
                         {
@@ -451,9 +419,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Pre-existing Condition",
-                            SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 5
                         },
                         new
                         {
@@ -463,9 +429,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Chronic Disease",
-                            SortOrder = 6,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 6
                         },
                         new
                         {
@@ -475,9 +439,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Disability",
-                            SortOrder = 7,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 7
                         });
                 });
 
@@ -516,7 +478,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -539,9 +501,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Detached home",
                             IsActive = true,
                             Name = "Detached",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -552,9 +512,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Semi-detached home",
                             IsActive = true,
                             Name = "Semi-Detached",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -565,9 +523,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Townhouse",
                             IsActive = true,
                             Name = "Townhouse",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         },
                         new
                         {
@@ -578,9 +534,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Apartment/Condo",
                             IsActive = true,
                             Name = "Apartment",
-                            SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 4
                         },
                         new
                         {
@@ -591,9 +545,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Mobile/manufactured home",
                             IsActive = true,
                             Name = "Mobile Home",
-                            SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 5
                         },
                         new
                         {
@@ -604,9 +556,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Other home type",
                             IsActive = true,
                             Name = "Other",
-                            SortOrder = 6,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 6
                         });
                 });
 
@@ -657,7 +607,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -682,9 +632,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Name = "Allstate Insurance",
                             PhoneNumber = "1-800-ALLSTATE",
                             RegistrationNumber = "REG-00001",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         });
                 });
 
@@ -723,7 +671,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -746,9 +694,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Offer pending",
                             IsActive = true,
                             Name = "Pending",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -759,9 +705,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Offer provided",
                             IsActive = true,
                             Name = "Offered",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -772,9 +716,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Offer accepted",
                             IsActive = true,
                             Name = "Accepted",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         },
                         new
                         {
@@ -785,9 +727,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Offer rejected",
                             IsActive = true,
                             Name = "Rejected",
-                            SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 4
                         },
                         new
                         {
@@ -798,9 +738,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Offer expired",
                             IsActive = true,
                             Name = "Expired",
-                            SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 5
                         },
                         new
                         {
@@ -811,9 +749,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Offer withdrawn",
                             IsActive = true,
                             Name = "Withdrawn",
-                            SortOrder = 6,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 6
                         });
                 });
 
@@ -852,7 +788,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -875,9 +811,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Automobile insurance",
                             IsActive = true,
                             Name = "Auto Insurance",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -888,9 +822,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Home/property insurance",
                             IsActive = true,
                             Name = "Home Insurance",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -901,9 +833,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Health/medical insurance",
                             IsActive = true,
                             Name = "Health Insurance",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         });
                 });
 
@@ -942,7 +872,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -965,9 +895,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Quote is in draft",
                             IsActive = true,
                             Name = "Draft",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -978,9 +906,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Quote submitted",
                             IsActive = true,
                             Name = "Submitted",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -991,9 +917,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Quote being processed",
                             IsActive = true,
                             Name = "In Progress",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         },
                         new
                         {
@@ -1004,9 +928,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Quote complete",
                             IsActive = true,
                             Name = "Quoted",
-                            SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 4
                         },
                         new
                         {
@@ -1017,9 +939,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Quote has expired",
                             IsActive = true,
                             Name = "Expired",
-                            SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 5
                         },
                         new
                         {
@@ -1030,9 +950,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Quote accepted",
                             IsActive = true,
                             Name = "Accepted",
-                            SortOrder = 6,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 6
                         },
                         new
                         {
@@ -1043,9 +961,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Converted to policy",
                             IsActive = true,
                             Name = "Converted",
-                            SortOrder = 7,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 7
                         },
                         new
                         {
@@ -1056,9 +972,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Quote declined",
                             IsActive = true,
                             Name = "Declined",
-                            SortOrder = 8,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 8
                         });
                 });
 
@@ -1097,7 +1011,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -1120,9 +1034,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Automated system",
                             IsActive = true,
                             Name = "System",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -1133,9 +1045,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Licensed agent",
                             IsActive = true,
                             Name = "Agent",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -1146,9 +1056,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             Description = "Insurance associate",
                             IsActive = true,
                             Name = "Associate",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         });
                 });
 
@@ -1187,7 +1095,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -1209,9 +1117,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Non-Smoker",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -1221,9 +1127,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Former Smoker",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -1233,9 +1137,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Current Smoker",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         });
                 });
 
@@ -1274,7 +1176,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -1296,9 +1198,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Black",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -1308,9 +1208,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "White",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -1320,9 +1218,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Silver",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         },
                         new
                         {
@@ -1332,9 +1228,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Gray",
-                            SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 4
                         },
                         new
                         {
@@ -1344,9 +1238,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Red",
-                            SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 5
                         },
                         new
                         {
@@ -1356,9 +1248,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Blue",
-                            SortOrder = 6,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 6
                         },
                         new
                         {
@@ -1368,9 +1258,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Green",
-                            SortOrder = 7,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 7
                         },
                         new
                         {
@@ -1380,9 +1268,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Brown",
-                            SortOrder = 8,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 8
                         },
                         new
                         {
@@ -1392,9 +1278,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Gold",
-                            SortOrder = 9,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 9
                         });
                 });
 
@@ -1433,7 +1317,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -1455,9 +1339,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Toyota",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -1467,9 +1349,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Honda",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -1479,9 +1359,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Ford",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         },
                         new
                         {
@@ -1491,9 +1369,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Chevrolet",
-                            SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 4
                         },
                         new
                         {
@@ -1503,9 +1379,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "BMW",
-                            SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 5
                         },
                         new
                         {
@@ -1515,9 +1389,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Mercedes-Benz",
-                            SortOrder = 6,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 6
                         },
                         new
                         {
@@ -1527,9 +1399,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Audi",
-                            SortOrder = 7,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 7
                         },
                         new
                         {
@@ -1539,9 +1409,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Volkswagen",
-                            SortOrder = 8,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 8
                         },
                         new
                         {
@@ -1551,9 +1419,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Mazda",
-                            SortOrder = 9,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 9
                         });
                 });
 
@@ -1592,7 +1458,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -1621,8 +1487,6 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             IsActive = true,
                             Name = "Camry",
                             SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed",
                             VehicleMakeId = 1
                         },
                         new
@@ -1634,8 +1498,6 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             IsActive = true,
                             Name = "Corolla",
                             SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed",
                             VehicleMakeId = 1
                         },
                         new
@@ -1647,8 +1509,6 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             IsActive = true,
                             Name = "Sienna",
                             SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed",
                             VehicleMakeId = 1
                         },
                         new
@@ -1660,8 +1520,6 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             IsActive = true,
                             Name = "RAV4",
                             SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed",
                             VehicleMakeId = 1
                         },
                         new
@@ -1673,8 +1531,6 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             IsActive = true,
                             Name = "4Runner",
                             SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed",
                             VehicleMakeId = 1
                         });
                 });
@@ -1714,7 +1570,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
@@ -1736,9 +1592,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Sedan",
-                            SortOrder = 1,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 1
                         },
                         new
                         {
@@ -1748,9 +1602,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "SUV",
-                            SortOrder = 2,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 2
                         },
                         new
                         {
@@ -1760,9 +1612,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Pickup Truck",
-                            SortOrder = 3,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 3
                         },
                         new
                         {
@@ -1772,9 +1622,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Hatchback",
-                            SortOrder = 4,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 4
                         },
                         new
                         {
@@ -1784,9 +1632,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Coupe",
-                            SortOrder = 5,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 5
                         },
                         new
                         {
@@ -1796,9 +1642,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Convertible",
-                            SortOrder = 6,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 6
                         },
                         new
                         {
@@ -1808,9 +1652,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Wagon",
-                            SortOrder = 7,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 7
                         },
                         new
                         {
@@ -1820,9 +1662,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Minivan",
-                            SortOrder = 8,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 8
                         },
                         new
                         {
@@ -1832,9 +1672,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Van",
-                            SortOrder = 9,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 9
                         },
                         new
                         {
@@ -1844,9 +1682,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Motorcycle",
-                            SortOrder = 10,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 10
                         },
                         new
                         {
@@ -1856,9 +1692,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                             CreatedBy = "seed",
                             IsActive = true,
                             Name = "Other",
-                            SortOrder = 11,
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            UpdatedBy = "seed"
+                            SortOrder = 11
                         });
                 });
 
@@ -2014,10 +1848,8 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
                     b.Property<int>("StatusId")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<decimal>("TotalPremium")
@@ -2158,6 +1990,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                     b.Property<Guid?>("LocationId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("LocationTypeId")
+                        .HasColumnType("int");
+
                     b.Property<string>("PostalCode")
                         .HasColumnType("nvarchar(max)");
 
@@ -2195,6 +2030,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
                     b.Property<Guid?>("LocationId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("LocationTypeId")
+                        .HasColumnType("int");
+
                     b.Property<string>("PostalCode")
                         .HasColumnType("nvarchar(max)");
 
@@ -2225,6 +2063,9 @@ namespace InsurancePortal.QuoteService.Infrastructure.Migrations
 
                     b.Property<Guid?>("LocationId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("LocationTypeId")
+                        .HasColumnType("int");
 
                     b.Property<string>("PostalCode")
                         .HasColumnType("nvarchar(max)");

@@ -14,7 +14,7 @@ namespace InsurancePortal.QuoteService.Domain.Entities
             ProductQuotes = new List<ProductQuote>();
             CreatedAt = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;
-            StatusId = (int)QuoteStatus.Active;
+            StatusId = (int)QuoteStatusEnum.Draft;
             ValidUntil = DateTime.UtcNow.AddDays(30); // Quote valid for 30 days
         }
 
@@ -44,13 +44,6 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         /// Represents overall quote lifecycle status
         /// </summary>
         public int StatusId { get; set; }
-
-        /// <summary>
-        /// Deprecated: Use StatusId instead
-        /// Kept for backward compatibility
-        /// </summary>
-        [Obsolete("Use StatusId with QuoteStatusLookup instead")]
-        public QuoteStatus Status { get; set; }
 
         /// <summary>
         /// When quote expires (default 30 days from creation)
@@ -136,11 +129,19 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         public bool IsExpired => DateTime.UtcNow > ValidUntil;
 
         /// <summary>
+        /// Mark quote as accepted
+        /// </summary>
+        public void MarkAsAccepted()
+        {
+            StatusId = (int)QuoteStatusEnum.Accepted;
+        }
+
+        /// <summary>
         /// Mark quote as converted to policy
         /// </summary>
         public void MarkAsConverted()
         {
-            StatusId = (int)QuoteStatus.Converted;
+            StatusId = (int)QuoteStatusEnum.Converted;
         }
 
         /// <summary>
@@ -148,7 +149,7 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         /// </summary>
         public void MarkAsExpired()
         {
-            StatusId = (int)QuoteStatus.Expired;
+            StatusId = (int)QuoteStatusEnum.Expired;
         }
 
         /// <summary>

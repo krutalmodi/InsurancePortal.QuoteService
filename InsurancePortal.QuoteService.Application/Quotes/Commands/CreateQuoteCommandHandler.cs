@@ -102,6 +102,7 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
                         {
                             ProductTypeId = (int)ProductType.Home,
                             LocationId = location.Id,
+                            LocationTypeId = location.LocationTypeId,
                             UnitNumber = location.UnitNumber,
                             StreetAddress1 = location.StreetAddress1,
                             StreetAddress2 = location.StreetAddress2,
@@ -139,6 +140,7 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
                             AtFaultAccidentCount = autoRequest.AtFaultAccidents,
                             SpeedingTicketCount = autoRequest.SpeedingTickets,
                             LocationId = location.Id,
+                            LocationTypeId = location.LocationTypeId,
                             UnitNumber = location.UnitNumber,
                             StreetAddress1 = location.StreetAddress1,
                             StreetAddress2 = location.StreetAddress2,
@@ -173,6 +175,7 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
                         {
                             ProductTypeId = (int)ProductType.Health,
                             LocationId = location.Id,
+                            LocationTypeId = location.LocationTypeId,
                             UnitNumber = location.UnitNumber,
                             StreetAddress1 = location.StreetAddress1,
                             StreetAddress2 = location.StreetAddress2,

@@ -20,7 +20,10 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
         {
             var expiredQuotes = await _repository.GetExpiredQuotesAsync();
 
-            foreach (var quote in expiredQuotes.Where(q => q.StatusId != (int)QuoteStatus.Expired))
+            foreach (var quote in expiredQuotes.Where(q => q.StatusId == (int)QuoteStatusEnum.Draft ||
+                                                           q.StatusId == (int)QuoteStatusEnum.Submitted ||
+                                                           q.StatusId == (int)QuoteStatusEnum.InProgress ||
+                                                           q.StatusId == (int)QuoteStatusEnum.Quoted))
             {
                 quote.MarkAsExpired();
                 await _repository.UpdateAsync(quote);

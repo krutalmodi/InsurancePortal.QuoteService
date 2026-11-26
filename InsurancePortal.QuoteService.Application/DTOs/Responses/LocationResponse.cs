@@ -7,7 +7,7 @@ namespace InsurancePortal.QuoteService.Application.DTOs.Responses
     {
         public Guid Id { get; set; }
 
-        public Guid LocationTypeId { get; set; }
+        public int? LocationTypeId { get; set; }
 
         public string? UnitNumber { get; set; }
 

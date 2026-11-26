@@ -1,9 +1,12 @@
 using InsurancePortal.QuoteService.Application.Abstractions.Cqrs;
+using InsurancePortal.QuoteService.Application.Clients;
 using InsurancePortal.QuoteService.Application.DTOs.Requests;
 using InsurancePortal.QuoteService.Application.DTOs.Responses;
+using InsurancePortal.QuoteService.Application.Lookups;
 using InsurancePortal.QuoteService.Application.Quotes.Commands;
 using InsurancePortal.QuoteService.Application.Quotes.Queries;
 using InsurancePortal.QuoteService.Application.Rating;
+using InsurancePortal.QuoteService.Application.Repositories;
 using System.Text.Json;
 using InsurancePortal.QuoteService.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -19,13 +22,22 @@ namespace InsurancePortal.QuoteService.API.Controllers
     {
         private readonly IDispatcher _dispatcher;
         private readonly ILogger<QuotesController> _logger;
+        private readonly IPolicyServiceClient _policyServiceClient;
+        private readonly ILookupRepository _lookupRepository;
+        private IReadOnlyList<LookupItem>? _quoteStatuses;
 
-        private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
+        private string? CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
 
-        public QuotesController(IDispatcher dispatcher, ILogger<QuotesController> logger)
+        public QuotesController(
+            IDispatcher dispatcher,
+            ILogger<QuotesController> logger,
+            IPolicyServiceClient policyServiceClient,
+            ILookupRepository lookupRepository)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _policyServiceClient = policyServiceClient ?? throw new ArgumentNullException(nameof(policyServiceClient));
+            _lookupRepository = lookupRepository ?? throw new ArgumentNullException(nameof(lookupRepository));
         }
 
         /// <summary>
@@ -104,18 +116,20 @@ namespace InsurancePortal.QuoteService.API.Controllers
         }
 
         /// <summary>
-        /// Get all quotes for a specific user
+        /// Get all quotes for the authenticated user
         /// </summary>
-        /// <param name="userId">User ID</param>
-        /// <returns>List of user's quotes</returns>
-        [HttpGet("user/{userId}")]
-        public async Task<ActionResult<IEnumerable<QuoteResponse>>> GetUserQuotes(Guid userId)
+        /// <returns>List of the current user's quotes</returns>
+        [HttpGet("user")]
+        public async Task<ActionResult<IEnumerable<QuoteResponse>>> GetUserQuotes()
         {
+            if (!Guid.TryParse(CurrentUserId, out var userId) || userId == Guid.Empty)
+            {
+                _logger.LogWarning("Cannot retrieve user quotes: authenticated token has no valid user identifier");
+                return Unauthorized("A valid user identifier is required in the authentication token");
+            }
+
             try
             {
-                if (userId == Guid.Empty)
-                    return BadRequest("User ID is required");
-
                 var quotes = await _dispatcher.QueryAsync<GetUserQuotesQuery, IEnumerable<Quote>>(new GetUserQuotesQuery(userId));
                 var responses = new List<QuoteResponse>();
 
@@ -142,28 +156,67 @@ namespace InsurancePortal.QuoteService.API.Controllers
         [HttpPost("{id}/accept")]
         public async Task<ActionResult<QuoteResponse>> AcceptQuote(Guid id)
         {
+            var accepted = false;
             try
             {
                 if (id == Guid.Empty)
                     return BadRequest("Quote ID is required");
+                if (!Guid.TryParse(CurrentUserId, out var currentUserId) || currentUserId == Guid.Empty)
+                    return Unauthorized("A valid user identifier is required in the authentication token");
 
-                var quote = await _dispatcher.SendAsync<AcceptQuoteCommand, Quote?>(new AcceptQuoteCommand(id));
+                var quote = await _dispatcher.SendAsync<AcceptQuoteCommand, Quote?>(new AcceptQuoteCommand(id, currentUserId));
 
                 if (quote == null)
                     return NotFound("Quote not found");
 
+                accepted = true;
+                var currencies = await _lookupRepository.GetAsync(LookupType.Currencies, includeInactive: true, vehicleMakeId: null);
+                var coverages = quote.ProductQuotes.Select(productQuote =>
+                {
+                    var currency = currencies.SingleOrDefault(item => item.Id == productQuote.CurrencyId)?.IsoCode;
+                    if (string.IsNullOrWhiteSpace(currency))
+                        throw new InvalidOperationException($"Currency lookup {productQuote.CurrencyId} has no ISO code");
+
+                    return new PolicyCoverageSnapshot(productQuote.ProductType.ToString(), productQuote.QuotedPremium, currency);
+                }).ToList();
+                var policy = await _policyServiceClient.IssueFromAcceptedQuoteAsync(new PolicyIssueRequest(
+                    quote.Id,
+                    quote.UserId,
+                    quote.ReferenceNumber ?? throw new InvalidOperationException("Quote reference number is missing"),
+                    DateTime.UtcNow,
+                    coverages));
+
                 var response = await MapToResponseAsync(quote);
+                response.PolicyId = policy.Id;
+                response.PolicyNumber = policy.PolicyNumber;
                 return Ok(response);
             }
-            catch (InvalidOperationException ex)
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "The authenticated user attempted to accept another user's quote");
+                return Forbid();
+            }
+            catch (QuoteAcceptanceConflictException ex)
+            {
+                _logger.LogWarning(ex, "Quote acceptance conflicted with an existing status");
+                return Conflict(ex.Message);
+            }
+            catch (PolicyServiceIntegrationException ex)
+            {
+                _logger.LogError(ex, "Quote was accepted, but Policy Service issuance failed");
+                return StatusCode(502, "Quote was accepted, but policy issuance failed. Contact support to reconcile policy issuance; do not retry acceptance.");
+            }
+            catch (InvalidOperationException ex) when (!accepted)
             {
                 _logger.LogWarning(ex, "Cannot accept quote");
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error accepting quote");
-                return StatusCode(500, "An error occurred while accepting the quote");
+                _logger.LogError(ex, "Error accepting quote; accepted: {Accepted}", accepted);
+                return StatusCode(500, accepted
+                    ? "Quote was accepted, but a subsequent operation failed. Contact support to reconcile policy issuance; do not retry acceptance."
+                    : "An error occurred while accepting the quote");
             }
         }
 
@@ -187,6 +240,11 @@ namespace InsurancePortal.QuoteService.API.Controllers
 
                 var response = await MapToResponseAsync(quote);
                 return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Cannot cancel quote");
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -245,12 +303,17 @@ namespace InsurancePortal.QuoteService.API.Controllers
         /// </summary>
         private async Task<QuoteResponse> MapToResponseAsync(Quote quote)
         {
+            _quoteStatuses ??= await _lookupRepository.GetAsync(LookupType.QuoteStatuses, includeInactive: true, vehicleMakeId: null);
+            var status = _quoteStatuses.SingleOrDefault(item => item.Id == quote.StatusId)
+                ?? throw new KeyNotFoundException($"Quote status lookup {quote.StatusId} was not found");
+
             var response = new QuoteResponse
             {
                 Id = quote.Id,
                 UserId = quote.UserId,
                 ReferenceNumber = quote.ReferenceNumber,
-                Status = quote.Status.ToString(),
+                StatusId = quote.StatusId,
+                Status = status.Code,
                 CreatedAt = quote.CreatedAt,
                 ValidUntil = quote.ValidUntil,
                 TotalPremium = quote.TotalPremium
@@ -263,7 +326,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                 {
                     case HomeQuote homeQuote:
                         {
-                            LocationResponse? locationResponse = MapLocation(homeQuote.LocationId, homeQuote.UnitNumber, homeQuote.StreetAddress1, homeQuote.StreetAddress2, homeQuote.City, homeQuote.PostalCode, homeQuote.ProvinceId, homeQuote.CountryId);
+                            LocationResponse? locationResponse = MapLocation(homeQuote.LocationId, homeQuote.LocationTypeId, homeQuote.UnitNumber, homeQuote.StreetAddress1, homeQuote.StreetAddress2, homeQuote.City, homeQuote.PostalCode, homeQuote.ProvinceId, homeQuote.CountryId);
 
                             response.HomeQuote = new HomeQuoteResponse
                             {
@@ -287,7 +350,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                         response.AutoQuote = new AutoQuoteResponse
                         {
                             Id = autoQuote.Id,
-                            Location = MapLocation(autoQuote.LocationId, autoQuote.UnitNumber, autoQuote.StreetAddress1, autoQuote.StreetAddress2, autoQuote.City, autoQuote.PostalCode, autoQuote.ProvinceId, autoQuote.CountryId),
+                            Location = MapLocation(autoQuote.LocationId, autoQuote.LocationTypeId, autoQuote.UnitNumber, autoQuote.StreetAddress1, autoQuote.StreetAddress2, autoQuote.City, autoQuote.PostalCode, autoQuote.ProvinceId, autoQuote.CountryId),
                             VIN = autoQuote.Details?.VIN,
                             VehicleMakeId = autoQuote.Details?.VehicleMakeId ?? 0,
                             VehicleModelId = autoQuote.Details?.VehicleModelId ?? 0,
@@ -310,7 +373,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
                         response.HealthQuote = new HealthQuoteResponse
                         {
                             Id = healthQuote.Id,
-                            Location = MapLocation(healthQuote.LocationId, healthQuote.UnitNumber, healthQuote.StreetAddress1, healthQuote.StreetAddress2, healthQuote.City, healthQuote.PostalCode, healthQuote.ProvinceId, healthQuote.CountryId),
+                            Location = MapLocation(healthQuote.LocationId, healthQuote.LocationTypeId, healthQuote.UnitNumber, healthQuote.StreetAddress1, healthQuote.StreetAddress2, healthQuote.City, healthQuote.PostalCode, healthQuote.ProvinceId, healthQuote.CountryId),
                             Age = healthQuote.Details?.Age ?? 0,
                             HealthStatus = healthQuote.Details?.HealthStatus,
                             HasPreexistingConditions = healthQuote.Details?.HasPreexistingConditions ?? false,
@@ -330,7 +393,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
         /// <summary>
         /// Map a Location from the product's stored address snapshot to LocationResponse
         /// </summary>
-        private static LocationResponse? MapLocation(Guid? locationId, string? unitNumber, string? streetAddress1, string? streetAddress2, string? city, string? postalCode, int? provinceId, int? countryId)
+        private static LocationResponse? MapLocation(Guid? locationId, int? locationTypeId, string? unitNumber, string? streetAddress1, string? streetAddress2, string? city, string? postalCode, int? provinceId, int? countryId)
         {
             if (!locationId.HasValue)
                 return null;
@@ -338,6 +401,7 @@ namespace InsurancePortal.QuoteService.API.Controllers
             return new LocationResponse
             {
                 Id = locationId.Value,
+                LocationTypeId = locationTypeId,
                 UnitNumber = unitNumber,
                 StreetAddress1 = streetAddress1 ?? string.Empty,
                 StreetAddress2 = streetAddress2,

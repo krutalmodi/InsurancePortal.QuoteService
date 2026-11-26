@@ -1,18 +1,17 @@
 namespace InsurancePortal.QuoteService.Domain.Enums
 {
     /// <summary>
-    /// Quote lifecycle statuses
-    /// Maps to QuoteStatusLookup.Code in database
+    /// Quote lifecycle statuses, keyed by QuoteStatusLookup.Id.
     /// </summary>
     public enum QuoteStatusEnum
     {
         Draft = 1,
-        Submitted,
-        InProgress,
-        Quoted,
-        Accepted,
-        Rejected,
-        Expired,
-        Cancelled
+        Submitted = 2,
+        InProgress = 3,
+        Quoted = 4,
+        Expired = 5,
+        Accepted = 6,
+        Converted = 7,
+        Declined = 8
     }
 }

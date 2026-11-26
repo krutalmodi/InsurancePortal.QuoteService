@@ -28,7 +28,8 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data.Configurations
 
             // Status - Foreign Key to QuoteStatusLookup
             builder.Property(q => q.StatusId)
-                .IsRequired();
+                .IsRequired()
+                .IsConcurrencyToken();
 
             // Timestamps
             builder.Property(q => q.CreatedAt)
@@ -55,9 +56,6 @@ namespace InsurancePortal.QuoteService.Infrastructure.Data.Configurations
             // Premium
             builder.Property(q => q.TotalPremium)
                 .HasColumnType("decimal(18,2)");
-
-            // Obsolete Status enum - no longer mapped, preserved for backward compatibility
-            // builder.Ignore(q => q.Status);
 
             // Foreign Keys
             builder.HasOne<QuoteStatusLookup>()

@@ -10,7 +10,7 @@ namespace InsurancePortal.QuoteService.Application.Repositories
     {
         Task<Quote?> GetByIdAsync(Guid id);
         Task<IEnumerable<Quote>> GetByUserIdAsync(Guid userId);
-        Task<IEnumerable<Quote>> GetByStatusAsync(QuoteStatus status);
+        Task<IEnumerable<Quote>> GetByStatusAsync(QuoteStatusEnum status);
         Task<IEnumerable<Quote>> GetByProductTypeAsync(ProductType productType);
         Task<Quote?> GetByReferenceNumberAsync(string referenceNumber);
         Task<IEnumerable<Quote>> GetActiveQuotesAsync();
@@ -18,6 +18,7 @@ namespace InsurancePortal.QuoteService.Application.Repositories
 
         Task AddAsync(Quote quote);
         Task UpdateAsync(Quote quote);
+        Task<bool> TryAcceptAsync(Quote quote);
         Task DeleteAsync(Guid id);
 
         Task<bool> ExistsByIdAsync(Guid id);

@@ -83,6 +83,8 @@ builder.Services.AddSingleton(new BasicRatingOptions
 builder.Services.AddScoped<IRatingEngine, BasicRatingEngine>();
 builder.Services.AddHttpClient<ILocationClient, LocationClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["LocationService:BaseUrl"] ?? throw new InvalidOperationException("LocationService:BaseUrl is not configured")));
+builder.Services.AddHttpClient<IPolicyServiceClient, PolicyServiceClient>(client =>
+    client.BaseAddress = new Uri(builder.Configuration["PolicyService:BaseUrl"] ?? throw new InvalidOperationException("PolicyService:BaseUrl is not configured")));
 
 #endregion
 

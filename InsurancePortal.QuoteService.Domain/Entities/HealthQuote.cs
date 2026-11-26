@@ -26,6 +26,8 @@ namespace InsurancePortal.QuoteService.Domain.Entities
         /// </summary>
         public Guid? LocationId { get; set; }
 
+        public int? LocationTypeId { get; set; }
+
         public string? UnitNumber { get; set; }
 
         public string? StreetAddress1 { get; set; }

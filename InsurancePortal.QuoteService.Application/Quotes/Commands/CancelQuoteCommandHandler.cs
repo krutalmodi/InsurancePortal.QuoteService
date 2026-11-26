@@ -1,6 +1,7 @@
 using InsurancePortal.QuoteService.Application.Abstractions.Cqrs;
 using InsurancePortal.QuoteService.Application.Repositories;
 using InsurancePortal.QuoteService.Domain.Entities;
+using InsurancePortal.QuoteService.Domain.Enums;
 
 namespace InsurancePortal.QuoteService.Application.Quotes.Commands
 {
@@ -24,6 +25,8 @@ namespace InsurancePortal.QuoteService.Application.Quotes.Commands
             var quote = await _repository.GetByIdAsync(command.QuoteId);
             if (quote == null)
                 return null;
+            if (quote.StatusId == (int)QuoteStatusEnum.Accepted || quote.StatusId == (int)QuoteStatusEnum.Converted)
+                throw new InvalidOperationException("Cannot cancel an accepted or converted quote");
 
             quote.MarkAsExpired();
             await _repository.UpdateAsync(quote);

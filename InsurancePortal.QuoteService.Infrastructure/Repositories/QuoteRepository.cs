@@ -34,7 +34,7 @@ namespace InsurancePortal.QuoteService.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Quote>> GetByStatusAsync(QuoteStatus status)
+        public async Task<IEnumerable<Quote>> GetByStatusAsync(QuoteStatusEnum status)
         {
             return await _context.Quotes
                 .Include(q => q.ProductQuotes)
@@ -66,7 +66,10 @@ namespace InsurancePortal.QuoteService.Infrastructure.Repositories
         {
             return await _context.Quotes
                 .Include(q => q.ProductQuotes)
-                .Where(q => q.StatusId == (int)QuoteStatus.Active && DateTime.UtcNow <= q.ValidUntil)
+                .Where(q => (q.StatusId == (int)QuoteStatusEnum.Draft ||
+                             q.StatusId == (int)QuoteStatusEnum.Submitted ||
+                             q.StatusId == (int)QuoteStatusEnum.InProgress ||
+                             q.StatusId == (int)QuoteStatusEnum.Quoted) && DateTime.UtcNow <= q.ValidUntil)
                 .OrderByDescending(q => q.CreatedAt)
                 .ToListAsync();
         }
@@ -96,6 +99,24 @@ namespace InsurancePortal.QuoteService.Infrastructure.Repositories
 
             _context.Quotes.Update(quote);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<bool> TryAcceptAsync(Quote quote)
+        {
+            ArgumentNullException.ThrowIfNull(quote);
+            if (_context.Entry(quote).State == EntityState.Detached)
+                throw new InvalidOperationException("Quote must be tracked before acceptance");
+            quote.MarkAsAccepted();
+            try
+            {
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _context.Entry(quote).State = EntityState.Detached;
+                return false;
+            }
         }
 
         public async Task DeleteAsync(Guid id)
